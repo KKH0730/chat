@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1033869949481",
+    "project_id": "chat-module-3187e",
+    "storage_bucket": "chat-module-3187e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1033869949481:android:d8be94375c455f483dfa38",
+        "android_client_info": {
+          "package_name": "st.seno.chat.chat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1033869949481-cht0hk60c9n71vqb9dnqpties9sf9cls.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD77vr8O5a3cAU-R9xU08CKycBOUb40tFs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1033869949481-cht0hk60c9n71vqb9dnqpties9sf9cls.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1033869949481-cugdg49rlj8l6mvqqkvicf62jjrc0ull.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "st.seno.chat.chat"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
