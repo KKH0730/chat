@@ -1,68 +1,82 @@
-import 'package:chat/data/model/ChatMessage.dart';
+import 'dart:async';
+
+import 'package:chat/data/bloc/ChatListBloc.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:tuple/tuple.dart';
+import '../model/ChatMessage.dart';
 import '../model/UserInfo.dart';
 
 class ChatListProvider {
-  final DatabaseReference databaseReference = FirebaseDatabase.instance
-      .refFromURL('https://chat-module-3187e-default-rtdb.firebaseio.com/');
+  final DatabaseReference databaseReference =
+      FirebaseDatabase.instance.refFromURL('https://chat-module-3187e-default-rtdb.firebaseio.com/');
   Client client = Get.find<Client>();
 
-  Future<List<List<ChatMessage>>> reqChatList(String myUid) async {
-    try {
-      List<List<ChatMessage>> wholeChatList = [];
-      final DatabaseEvent chatRoomsQueryEvent =
-          await databaseReference
-              .child('chat_rooms')
-              .child(myUid)
-              .orderByKey()
-              .once();
+  StreamSubscription observeAddedChatList(PublishSubject<Tuple2<String, List<ChatMessage>>> addedChatListPublisher, String myUid) {
 
-      if (chatRoomsQueryEvent.snapshot.value != null) {
-        Map<dynamic, dynamic> chatListMap =
-            chatRoomsQueryEvent.snapshot.value as Map<dynamic, dynamic>;
+    StreamSubscription subscription = databaseReference
+        .child('chat_rooms')
+        .child(myUid)
+        .orderByChild('lastDate')
+        .endBefore(DateTime.now().millisecondsSinceEpoch)
+        .onChildAdded
+        .listen((event) async {
+          try {
+            List<ChatMessage> chatMessages = [];
+            ChatMessage lastChatMessage = ChatMessage.fromJson(
+                event.snapshot.children.last.key!, Map.from(event.snapshot.children.last.value as Map<dynamic, dynamic>));
+            var userInfo = await reqGetUserInfo(lastChatMessage.otherUid);
 
-        for (var chatListEntry in chatListMap.entries) {
-          List<ChatMessage> chatList = [];
-          Map<dynamic, dynamic> chatListMap = Map.from(chatListEntry.value);
-          ChatMessage lastChatMessage = ChatMessage.fromJson(
-              chatListMap.entries.last.key,
-              Map.from(chatListMap.entries.last.value));
-          // 마지막 메세지에서 상대의 UID를 가져온다.
-          UserInfo userInfo = await reqGetUserInfo(lastChatMessage.otherUid);
+            for (DataSnapshot chatListSnapshot in event.snapshot.children) {
+              var chatMap = chatListSnapshot.value as Map<dynamic, dynamic>;
+              ChatMessage chatMessage = ChatMessage.fromJson(chatListSnapshot.key!, Map.from(chatMap));
 
-          for (var chatEntry in chatListEntry.value.entries) {
-            ChatMessage chatMessage =
-                ChatMessage.fromJson(chatEntry.key, Map.from(chatEntry.value));
-
-            // 각 메세지에 유저 정보(프로필 이미지, 닉네임)를 넣어준다.
-            chatMessage.otherName = userInfo.name;
-            chatMessage.otherProfileUri = userInfo.profileUri;
-
-            chatList.add(chatMessage);
+              // 각 메세지에 유저 정보(프로필 이미지, 닉네임)를 넣어준다.
+              chatMessage.otherName = userInfo.name;
+              chatMessage.otherProfileUri = userInfo.profileUri;
+              chatMessages.add(chatMessage);
+            }
+            if (!addedChatListPublisher.isPaused && !addedChatListPublisher.isClosed) {
+              addedChatListPublisher.sink.add(Tuple2<String, List<ChatMessage>>(event.snapshot.key!, chatMessages));
+            }
+          } catch (e) {
+            print(e);
           }
-          if (chatList.isNotEmpty) {
-            wholeChatList.add(chatList);
+        });
+    return subscription;
+  }
+
+  StreamSubscription observeChangedChild(PublishSubject<Tuple2<String, List<ChatMessage>>> changedChatListPublisher, String myUid) {
+    StreamSubscription subscription = databaseReference
+        .child('chat_rooms')
+        .child(myUid)
+        .onChildChanged
+        .listen((event) async {
+          try {
+            List<ChatMessage> chatMessages = [];
+            for (DataSnapshot chatListSnapshot in event.snapshot.children) {
+              var chatMap = chatListSnapshot.value as Map<dynamic, dynamic>;
+              ChatMessage chatMessage = ChatMessage.fromJson(chatListSnapshot.key!, Map.from(chatMap));
+              chatMessages.add(chatMessage);
+            }
+            if (!changedChatListPublisher.isPaused && !changedChatListPublisher.isClosed) {
+              changedChatListPublisher.sink.add(Tuple2<String, List<ChatMessage>>(event.snapshot.key!, chatMessages));
+            }
+          } catch (e) {
+            print(e);
           }
-        }
-      }
-      return wholeChatList;
-    } catch (e) {
-      print('Error occurred while fetching chat list: $e');
-      return [];
-    }
+    });
+    return subscription;
   }
 
   Future<UserInfo> reqGetUserInfo(String otherUid) async {
     try {
-      final DatabaseEvent userInfoQueryEvent =
-          await databaseReference.child('user_info').child(otherUid).once();
+      final DatabaseEvent userInfoQueryEvent = await databaseReference.child('user_info').child(otherUid).once();
       if (userInfoQueryEvent.snapshot.value != null) {
-        Map<dynamic, dynamic> userInfoMap =
-            userInfoQueryEvent.snapshot.value as Map<dynamic, dynamic>;
-        return UserInfo(
-            name: userInfoMap['name'], profileUri: userInfoMap['profileUri']);
+        Map<dynamic, dynamic> userInfoMap = userInfoQueryEvent.snapshot.value as Map<dynamic, dynamic>;
+        return UserInfo(name: userInfoMap['name'], profileUri: userInfoMap['profileUri']);
       } else {
         return UserInfo(name: '', profileUri: '');
       }

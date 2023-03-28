@@ -1,9 +1,6 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:rxdart/rxdart.dart';
 
-import '../model/ChatMessage.dart';
 import '../model/Result.dart';
 import '../provider/ChatProvider.dart';
 

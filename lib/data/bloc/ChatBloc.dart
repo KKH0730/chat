@@ -4,8 +4,6 @@ import 'dart:ffi';
 import 'package:chat/data/model/Result.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
-import 'package:rxdart/rxdart.dart';
-
 import '../../utils/DateUtil.dart';
 import '../model/ChatMessage.dart';
 import '../repository/ChatRepository.dart';
@@ -72,7 +70,6 @@ class ChatBloc {
   }
 
   void dispose() {
-    print('kkhdev dispose');
     subscription?.cancel();
     chatMessagesController.close();
     dateNotificationController.close();

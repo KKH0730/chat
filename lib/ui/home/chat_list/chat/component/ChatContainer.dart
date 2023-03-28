@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 
 import '../../../../../AppColors.dart';
+import '../../component/ChatListContainer.dart';
 import 'ChatMessageComponent.dart';
 import 'DateNotification.dart';
 

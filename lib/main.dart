@@ -1,4 +1,5 @@
 import 'package:chat/ui/home/HomeScreen.dart';
+import 'package:chat/ui/home/chat_list/component/ChatListContainer.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,6 +11,8 @@ import 'di/DIBinding.dart';
 import 'ui/home/chat_list/ChatListScreen.dart';
 import 'ui/home/chat_list/chat/ChatScreen.dart';
 
+final routeObserver = RouteObserver<ModalRoute>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
@@ -18,7 +21,7 @@ void main() async {
   await FirebaseAuth.instance.signInAnonymously();
 
   FlutterError.onError = (FlutterErrorDetails details) {
-    print('kkhdev Uncaught error: ${details.exception}');
+    print('Uncaught error: ${details.exception}');
     FlutterError.dumpErrorToConsole(details);
   };
 
@@ -32,6 +35,11 @@ void main() async {
   // prefs.setString('myProfileUri',
   //     'https://search.pstatic.net/sunny/?src=https%3A%2F%2Fi.pinimg.com%2Foriginals%2F21%2Ff9%2F83%2F21f98377d0d9f9efc27dfc19323d2c95.jpg&type=sc960_832');
   // prefs.setString('myUid', 'kQ81x3QrrHQOToARYRcXmMFxVYy1');
+
+  // prefs.setString('myName', '제프집사');
+  // prefs.setString('myProfileUri',
+  //     'https://mblogthumb-phinf.pstatic.net/MjAxODAxMTVfMjQg/MDAxNTE2MDA1MTI4OTk2.FXP09sHR1BHmwm6xszEG0Kw8obKdJZL7DwMEFnL_490g.HIoJkfFWiplL29ZKvumtZNiLCcCtObOkS7T6f2dsZL4g.JPEG.interpark_pet/cat_22.jpg?type=w800');
+  // prefs.setString('myUid', 'UEG7B7MM8NTgidwmW1FE7v7hhjq2');
 
   runApp(EasyLocalization(
       supportedLocales: const [
@@ -55,6 +63,7 @@ class MyApp extends StatelessWidget {
       supportedLocales: context.supportedLocales,
       locale: context.locale,
       initialRoute: initialRoute,
+      navigatorObservers: [routeObserver],
       routes: routes,
     );
   }
