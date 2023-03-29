@@ -1,7 +1,6 @@
 import 'package:chat/utils/DateUtil.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/bloc/ChatListBloc.dart';
 import '../data/provider/ChatListProvider.dart';
@@ -12,7 +11,6 @@ import '../data/repository/ChatRepository.dart';
 class DIBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut(() => DateUtil());
     Get.lazyPut(() => ChatListBloc());
     Get.lazyPut(() => ChatListRepository());
     Get.lazyPut(() => ChatRepository());

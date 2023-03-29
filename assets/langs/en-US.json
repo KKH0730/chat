@@ -3,5 +3,8 @@
   "enter" : "Enter",
   "chat_list_header" : "Chatting",
   "chat_list_menu_0" : "Search",
-  "chat_list_menu_1" : "Sort"
+  "chat_list_menu_1" : "Sort",
+  "date_format_yyyy_mm_dd_date" : "1$s 2$s, 3$s, 4$s",
+  "date_format_yyyy_mm_dd_date2" : "1$s 2$s",
+  "date_format_yyyy_mm_dd_date3" : "1$s 2$s, 3$s"
 }

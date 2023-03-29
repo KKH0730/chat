@@ -3,5 +3,8 @@
   "enter" : "들어가기",
   "chat_list_header" : "채팅",
   "chat_list_menu_0" : "검색",
-  "chat_list_menu_1" : "정렬"
+  "chat_list_menu_1" : "정렬",
+  "date_format_yyyy_mm_dd_date" : "1$s년 2$s월 3$s일 (4$s)",
+  "date_format_yyyy_mm_dd_date2" : "1$s월 2$s일",
+  "date_format_yyyy_mm_dd_date3" : "1$s년 2$s월 3$s일"
 }

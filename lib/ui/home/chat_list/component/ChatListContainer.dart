@@ -1,8 +1,5 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chat/data/bloc/ChatListBloc.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:get/get.dart';
 
 import '../../../../AppColors.dart';
 import '../../../../data/model/ChatMessage.dart';
@@ -81,7 +78,6 @@ class ChatListState extends State<ChatListContainer> with RouteAware {
 }
 
 class ChatListUnit extends StatelessWidget {
-  DateUtil dateUtils = Get.find<DateUtil>();
   late ChatMessage chatMessage;
 
   ChatListUnit(this.chatMessage, {super.key});
@@ -127,7 +123,7 @@ class ChatListUnit extends StatelessWidget {
               child: Align(
                 alignment: Alignment.topRight,
                 child: Text(
-                  dateUtils.getChatLastDate(chatMessage.lastDate),
+                  DateUtil.getChatLastDate(chatMessage.lastDate),
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: AppColors.color_A3A3A8CD),
                 ),
               ),

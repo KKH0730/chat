@@ -1,7 +1,8 @@
-import 'package:chat/data/model/ChatMessage.dart';
+import 'package:chat/utils/RegionUtil.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class DateUtil {
-  String getChatLastDate(int timeinmillis) {
+  static String getChatLastDate(int timeinmillis) {
     // 현재 시각을 기준으로 한 로컬 시간을 얻습니다.
     DateTime currentDateTime = DateTime.now();
 
@@ -35,7 +36,79 @@ class DateUtil {
     }
   }
 
-  bool isSameDate(int date1, int date2) {
+  static String transMillisecondToDate(int millisecond) {
+    DateTime date = DateTime.fromMillisecondsSinceEpoch(millisecond);
+
+    var values = [];
+    if (RegionUtil.getLanguageCode() == "ko") {
+      values = [
+        date.year.toString(),
+        DateFormat('M').format(date).replaceAll('월', ''),
+        DateFormat('dd').format(date),
+        DateFormat('EEE').format(date)
+      ];
+    } else {
+      values = [
+        DateFormat('MMM').format(date),
+        DateFormat('dd').format(date),
+        date.year.toString(),
+        DateFormat('EEE').format(date)
+      ];
+    }
+
+    String format = 'date_format_yyyy_mm_dd_date'.tr();
+
+    var i = 0;
+    String str = format.replaceAllMapped(RegExp(r'\d+\$s'), (match) => values[i++]);
+    return str;
+  }
+
+  static String transMillisecondToDate2(int millisecond) {
+    DateTime todayDate = DateTime.now();
+    DateTime date = DateTime.fromMillisecondsSinceEpoch(millisecond);
+
+    var values = [];
+    String format = '';
+    if (todayDate.year == date.year) {
+      format = 'date_format_yyyy_mm_dd_date2'.tr();
+
+      // ko -> 3월 2일, en -> Mar 2
+      if (RegionUtil.getLanguageCode() == "ko") {
+        values = [
+          DateFormat('M').format(date).replaceAll('월', ''),
+          DateFormat('dd').format(date)
+        ];
+      } else {
+        values = [
+          DateFormat('MMM').format(date),
+          DateFormat('dd').format(date),
+        ];
+      }
+    } else {
+      format = 'date_format_yyyy_mm_dd_date3'.tr();
+
+      // ko -> 2022년 3월 2일, en -> Mar 2, 2022
+      if (RegionUtil.getLanguageCode() == "ko") {
+        values = [
+          date.year.toString(),
+          DateFormat('M').format(date).replaceAll('월', ''),
+          DateFormat('dd').format(date)
+        ];
+      } else {
+        values = [
+          DateFormat('MMM').format(date),
+          DateFormat('dd').format(date),
+          date.year.toString(),
+        ];
+      }
+    }
+
+    var i = 0;
+    String str = format.replaceAllMapped(RegExp(r'\d+\$s'), (match) => values[i++]);
+    return str;
+  }
+
+  static bool isSameDate(int date1, int date2) {
     DateTime date1Time = DateTime.fromMillisecondsSinceEpoch(date1);
     int year1 = date1Time.year;
     int month1 = date1Time.month;

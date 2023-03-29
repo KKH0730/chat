@@ -7,7 +7,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 
 import '../../../../../AppColors.dart';
-import '../../component/ChatListContainer.dart';
 import 'ChatMessageComponent.dart';
 import 'DateNotification.dart';
 
@@ -61,18 +60,26 @@ class _ChatContainerState extends State<ChatContainer> {
     int firstVisibleItemIndex =
         (scrollOffset / (scrollRange + viewportHeight) * itemCount).floor();
 
-    if (!scrollController.position.outOfRange && isRenderedChatMessages) {
-      if (this.firstVisibleItemIndex >= firstVisibleItemIndex &&
-          this.scrollOffset > scrollOffset &&
-          this.scrollOffset != 0) {
-        chatBloc.showDateNotification(
-            chatBloc.chatMessages[firstVisibleItemIndex].lastDate.toString());
-      } else {
-        chatBloc.showDateNotification('');
-      }
+    if (!scrollController.position.outOfRange) {
+      chatBloc.showDateNotification(
+          chatBloc.chatMessages[firstVisibleItemIndex].lastDate.toString());
+
       this.scrollOffset = scrollOffset;
       this.firstVisibleItemIndex = firstVisibleItemIndex;
     }
+
+    // if (!scrollController.position.outOfRange && isRenderedChatMessages) {
+    //   if (this.firstVisibleItemIndex >= firstVisibleItemIndex &&
+    //       this.scrollOffset > scrollOffset &&
+    //       this.scrollOffset != 0) {
+    //     chatBloc.showDateNotification(
+    //         chatBloc.chatMessages[firstVisibleItemIndex].lastDate.toString());
+    //   } else {
+    //     chatBloc.showDateNotification('');
+    //   }
+    //   this.scrollOffset = scrollOffset;
+    //   this.firstVisibleItemIndex = firstVisibleItemIndex;
+    // }
   }
 
   @override
@@ -86,7 +93,7 @@ class _ChatContainerState extends State<ChatContainer> {
           children: [
             _chatMessages(chatBloc.chatMessageStream),
             Align(
-              alignment: Alignment.topCenter,
+              alignment: Alignment.topRight,
               child: _dateNotification(chatBloc.dateNotificationStream),
             )
           ],
@@ -96,7 +103,6 @@ class _ChatContainerState extends State<ChatContainer> {
   }
 
   Widget _chatMessages(Stream<List<ChatMessage>> stream) {
-    DateUtil dateUtils = Get.find<DateUtil>();
     return StreamBuilder(
       stream: stream,
       builder: (context, snapShot) {
@@ -120,14 +126,16 @@ class _ChatContainerState extends State<ChatContainer> {
                   return Column(
                     children: [
                       if (index == 0) const SizedBox(height: 25),
-                      // if (index > 0
-                      //     && index < chatMessages.length
-                      //     && !dateUtils.isSameDate(chatMessages[index - 1].lastDate, chatMessages[index].lastDate)
-                      // )
-                      //   Align(
-                      //     alignment: Alignment.center,
-                      //     child: Text(chatMessages[index].lastDate.toString()),
-                      //   ),
+                      if (index == 0) _dateText(chatMessages[index].lastDate),
+                      if (index == 0) const SizedBox(height: 20),
+                      if (index > 0
+                          && index < chatMessages.length
+                          && !DateUtil.isSameDate(chatMessages[index - 1].lastDate, chatMessages[index].lastDate)
+                      ) _dateText(chatMessages[index].lastDate),
+                      if (index > 0
+                          && index < chatMessages.length
+                          && !DateUtil.isSameDate(chatMessages[index - 1].lastDate, chatMessages[index].lastDate)
+                      ) const SizedBox(height: 20),
                       ChatMessageComponent(chatMessage: chatMessages[index]),
                       const SizedBox(height: 20),
                     ],
@@ -140,6 +148,25 @@ class _ChatContainerState extends State<ChatContainer> {
           return _chatLoadingScreen();
         }
       },
+    );
+  }
+
+  Widget _dateText(int millisecond) {
+    return Align(
+      alignment: Alignment.center,
+      child: Container(
+        margin: const EdgeInsets.only(top: 20, right: 10),
+        padding:
+        const EdgeInsets.symmetric(vertical: 7, horizontal: 15),
+        decoration: BoxDecoration(
+          color: AppColors.color_59464545,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          DateUtil.transMillisecondToDate(millisecond),
+          style: const TextStyle(color: Colors.white, fontSize: 10),
+        ),
+      ),
     );
   }
 

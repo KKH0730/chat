@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ffi';
 
 import 'package:chat/data/model/Result.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,7 +8,6 @@ import '../model/ChatMessage.dart';
 import '../repository/ChatRepository.dart';
 
 class ChatBloc {
-  DateUtil dateUtils = Get.find<DateUtil>();
   final User? user = FirebaseAuth.instance.currentUser;
   final chatRepository = Get.find<ChatRepository>();
 
@@ -65,7 +63,7 @@ class ChatBloc {
       dateNotificationController.sink.add('');
     } else {
       var time = int.tryParse(timeMillisecond) ?? DateTime.now().millisecond;
-      dateNotificationController.sink.add(dateUtils.getChatLastDate(time));
+      dateNotificationController.sink.add(DateUtil.transMillisecondToDate2(time));
     }
   }
 
