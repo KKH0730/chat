@@ -62,7 +62,7 @@ class ChatListState extends State<ChatListContainer> with RouteAware {
                       onTap: () => Navigator.pushNamed(context, '/ChatScreen', arguments: chatMessages),
                       child: chatMessages == null || chatMessages.isEmpty
                           ? Container()
-                          : ChatListUnit(chatMessages[chatMessages.length - 1]),
+                          : ChatListUnit(chatMessages[0]),
                     );
                   });
             } else if (snapshot.hasError) {
@@ -123,7 +123,7 @@ class ChatListUnit extends StatelessWidget {
               child: Align(
                 alignment: Alignment.topRight,
                 child: Text(
-                  DateUtil.getChatLastDate(chatMessage.lastDate),
+                  DateUtil.getChatLastDate(chatMessage.timestamp),
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: AppColors.color_A3A3A8CD),
                 ),
               ),

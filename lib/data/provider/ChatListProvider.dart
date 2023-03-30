@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:chat/data/bloc/ChatListBloc.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -15,11 +16,10 @@ class ChatListProvider {
   Client client = Get.find<Client>();
 
   StreamSubscription observeAddedChatList(PublishSubject<Tuple2<String, List<ChatMessage>>> addedChatListPublisher, String myUid) {
-
     StreamSubscription subscription = databaseReference
         .child('chat_rooms')
         .child(myUid)
-        .orderByChild('lastDate')
+        .orderByChild('timestamp')
         .endBefore(DateTime.now().millisecondsSinceEpoch)
         .onChildAdded
         .listen((event) async {
@@ -29,7 +29,14 @@ class ChatListProvider {
                 event.snapshot.children.last.key!, Map.from(event.snapshot.children.last.value as Map<dynamic, dynamic>));
             var userInfo = await reqGetUserInfo(lastChatMessage.otherUid);
 
-            for (DataSnapshot chatListSnapshot in event.snapshot.children) {
+            List<DataSnapshot> chatListSnapshotList = [];
+            if (event.snapshot.children.length <= 20) {
+              chatListSnapshotList = event.snapshot.children.toList().reversed.toList();
+            } else {
+              chatListSnapshotList = event.snapshot.children.toList().sublist(event.snapshot.children.length - 20, event.snapshot.children.length).reversed.toList();
+            }
+
+            for (DataSnapshot chatListSnapshot in chatListSnapshotList) {
               var chatMap = chatListSnapshot.value as Map<dynamic, dynamic>;
               ChatMessage chatMessage = ChatMessage.fromJson(chatListSnapshot.key!, Map.from(chatMap));
 

@@ -32,7 +32,8 @@ class ChatListBloc {
       if (chatListTuple.item2.isEmpty) {
         return;
       }
-      otherUserInfoData[chatListTuple.item1] = data.UserInfo(name: chatListTuple.item2.last.otherName, profileUri: chatListTuple.item2.last.otherProfileUri);
+      otherUserInfoData[chatListTuple.item1] =
+          data.UserInfo(name: chatListTuple.item2.last.otherName, profileUri: chatListTuple.item2.last.otherProfileUri);
       Map<String, List<ChatMessage>> chatListMap = chatListFetcher.hasValue ? chatListFetcher.value : {};
 
       List<MapEntry<String, List<ChatMessage>>> entries = chatListMap.entries.toList();
@@ -44,7 +45,8 @@ class ChatListBloc {
             entries.add(MapEntry(chatListTuple.item1, chatListTuple.item2));
             break;
           } else {
-            if (chatListTuple.item2[chatListTuple.item2.length - 1].lastDate >= entries[i].value[entries[i].value.length - 1].lastDate) {
+            if (chatListTuple.item2[chatListTuple.item2.length - 1].timestamp >=
+                entries[i].value[entries[i].value.length - 1].timestamp) {
               entries.insert(i, MapEntry(chatListTuple.item1, chatListTuple.item2));
               break;
             } else {
@@ -103,6 +105,8 @@ class ChatListBloc {
     chatListFetcher.close();
     addedChatListPublisher.close();
     changedChatListPublisher.close();
-    for (var element in chatListSubscriptionList) {element.cancel();}
+    for (var element in chatListSubscriptionList) {
+      element.cancel();
+    }
   }
 }

@@ -76,7 +76,7 @@ class ChatTime extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     DateTime dateTime =
-        DateTime.fromMillisecondsSinceEpoch(chatMessage.lastDate);
+        DateTime.fromMillisecondsSinceEpoch(chatMessage.timestamp);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Text(

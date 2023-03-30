@@ -1,20 +1,22 @@
+import 'dart:async';
+
 import 'package:chat/data/bloc/ChatBloc.dart';
 import 'package:chat/data/model/ChatMessage.dart';
 import 'package:chat/utils/DateUtil.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:get/get.dart';
 
 import '../../../../../AppColors.dart';
 import 'ChatMessageComponent.dart';
+import 'ChatProfileImage.dart';
 import 'DateNotification.dart';
 
 class ChatContainer extends StatefulWidget {
   List<ChatMessage> chatMessages;
   ChatBloc chatBloc;
 
-  ChatContainer({ super.key, required this.chatMessages, required this.chatBloc });
+  ChatContainer({super.key, required this.chatMessages, required this.chatBloc});
 
   @override
   State<StatefulWidget> createState() => _ChatContainerState(chatMessages: chatMessages, chatBloc: chatBloc);
@@ -25,61 +27,60 @@ class _ChatContainerState extends State<ChatContainer> {
   double scrollOffset = 0;
   int firstVisibleItemIndex = 0;
   List<ChatMessage> chatMessages;
-  late ChatBloc chatBloc;
+  ChatBloc chatBloc;
   var isRenderedChatMessages = false;
 
-  _ChatContainerState({ required this.chatMessages, required this.chatBloc });
+  _ChatContainerState({required this.chatMessages, required this.chatBloc});
 
   @override
   void initState() {
     super.initState();
-    scrollController.addListener(_scrollListenerWithItemCount);
+    scrollController.addListener(_scrollListener);
 
     var lastChatMessage = chatMessages[chatMessages.length - 1];
     chatBloc.observeAddedChatMessage(
-        lastChatMessage.myUid,
-        lastChatMessage.otherUid,
-        lastChatMessage.myProfileUri,
-        lastChatMessage.otherProfileUri,
-        lastChatMessage.messageId);
+        lastChatMessage.myUid, lastChatMessage.otherUid, lastChatMessage.myProfileUri, lastChatMessage.otherProfileUri);
+
+    chatBloc.addedChatMessagePublisher.listen((value) {
+      // 새로운 메세지가 왔을 떄, ListView의 offest과 가장 하단의 offest의 차이가 메세지 2개정도 차이났을 때는 가장 하단으로 스크롤 해줌
+      if (scrollController.position.minScrollExtent - scrollController.offset < 200 || value.isSender) {
+        Future.delayed(const Duration(milliseconds: 300),
+            () => scrollController.jumpTo(scrollController.position.minScrollExtent));
+      } else {
+        // 새로운 메세지가 왔을 떄, ListView의 offest과 가장 하단의 offest의 차이가 메세지 2개보다 더 차이가 나면 메세지가 왔다고 채팅 입력창 위에 알림 표시해줌.
+        if (!value.isSender) {
+          chatBloc.recentMessageNotificationController.sink.add(value);
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     chatBloc.dispose();
-    scrollController.removeListener(_scrollListenerWithItemCount);
+    scrollController.removeListener(_scrollListener);
     super.dispose();
   }
 
-  void _scrollListenerWithItemCount() {
-    int itemCount = chatBloc.chatMessages.length;
+  void _scrollListener() {
+    int itemCount = chatBloc.getChatMessages().length;
     double scrollOffset = scrollController.position.pixels;
     double viewportHeight = scrollController.position.viewportDimension;
-    double scrollRange = scrollController.position.maxScrollExtent -
-        scrollController.position.minScrollExtent;
-    int firstVisibleItemIndex =
-        (scrollOffset / (scrollRange + viewportHeight) * itemCount).floor();
+    double scrollRange = scrollController.position.maxScrollExtent - scrollController.position.minScrollExtent;
+    int firstVisibleItemIndex = (scrollOffset / (scrollRange + viewportHeight) * itemCount).floor();
 
     if (!scrollController.position.outOfRange) {
-      chatBloc.showDateNotification(
-          chatBloc.chatMessages[firstVisibleItemIndex].lastDate.toString());
+      chatBloc.showDateNotification(chatBloc.getChatMessages()[firstVisibleItemIndex].timestamp.toString());
 
       this.scrollOffset = scrollOffset;
       this.firstVisibleItemIndex = firstVisibleItemIndex;
     }
 
-    // if (!scrollController.position.outOfRange && isRenderedChatMessages) {
-    //   if (this.firstVisibleItemIndex >= firstVisibleItemIndex &&
-    //       this.scrollOffset > scrollOffset &&
-    //       this.scrollOffset != 0) {
-    //     chatBloc.showDateNotification(
-    //         chatBloc.chatMessages[firstVisibleItemIndex].lastDate.toString());
-    //   } else {
-    //     chatBloc.showDateNotification('');
-    //   }
-    //   this.scrollOffset = scrollOffset;
-    //   this.firstVisibleItemIndex = firstVisibleItemIndex;
-    // }
+    if (scrollController.offset.floor() == scrollController.position.maxScrollExtent.floor() && chatMessages.isNotEmpty) {
+      var firstChatMessage = chatMessages.last;
+      chatBloc.reqPreviousMessage(firstChatMessage.myUid, firstChatMessage.otherUid, firstChatMessage.myProfileUri,
+          firstChatMessage.otherProfileUri, firstChatMessage.timestamp, firstChatMessage.message);
+    }
   }
 
   @override
@@ -91,11 +92,16 @@ class _ChatContainerState extends State<ChatContainer> {
         color: AppColors.color_FFBFCDDF,
         child: Stack(
           children: [
-            _chatMessages(chatBloc.chatMessageStream),
-            Align(
-              alignment: Alignment.topRight,
-              child: _dateNotification(chatBloc.dateNotificationStream),
-            )
+            _chatMessages(chatBloc.chatMessagesFetcher.stream),
+            _dateNotificationWidget(chatBloc.dateNotificationStream),
+            _recentMessageNotificationWidget(chatBloc.recentMessageNotificationStream, () {
+              chatBloc.recentMessageNotificationController.sink.add(null);
+              scrollController.animateTo(
+                  scrollController.position.minScrollExtent,
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.ease
+              );
+            }),
           ],
         ),
       ),
@@ -113,34 +119,44 @@ class _ChatContainerState extends State<ChatContainer> {
           } else if (chatMessages.isEmpty) {
             return Container();
           } else {
-            SchedulerBinding.instance.addPostFrameCallback((_) {
-              scrollController
-                  .jumpTo(scrollController.position.maxScrollExtent);
-              isRenderedChatMessages = true;
-            });
-            return ListView.builder(
-                controller: scrollController,
-                shrinkWrap: true,
-                itemCount: chatMessages.length,
-                itemBuilder: (context, index) {
-                  return Column(
-                    children: [
-                      if (index == 0) const SizedBox(height: 25),
-                      if (index == 0) _dateText(chatMessages[index].lastDate),
-                      if (index == 0) const SizedBox(height: 20),
-                      if (index > 0
-                          && index < chatMessages.length
-                          && !DateUtil.isSameDate(chatMessages[index - 1].lastDate, chatMessages[index].lastDate)
-                      ) _dateText(chatMessages[index].lastDate),
-                      if (index > 0
-                          && index < chatMessages.length
-                          && !DateUtil.isSameDate(chatMessages[index - 1].lastDate, chatMessages[index].lastDate)
-                      ) const SizedBox(height: 20),
-                      ChatMessageComponent(chatMessage: chatMessages[index]),
-                      const SizedBox(height: 20),
-                    ],
-                  );
-                });
+            if (!isRenderedChatMessages) {
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                scrollController.jumpTo(scrollController.position.minScrollExtent);
+                isRenderedChatMessages = true;
+              });
+            }
+            return Scrollbar(
+              controller: scrollController,
+              interactive: true,
+              thickness: 8,
+              trackVisibility: true,
+              radius: const Radius.circular(4),
+              child: ListView.builder(
+                  controller: scrollController,
+                  reverse: true,
+                  shrinkWrap: true,
+                  itemCount: chatMessages.length,
+                  itemBuilder: (context, index) {
+                    return Column(
+                      children: [
+                        if (index == chatMessages.length - 1) const SizedBox(height: 10),
+                        if (index == chatMessages.length - 1) _dateTextWidget(chatMessages[index].timestamp),
+                        if (index == chatMessages.length - 1) const SizedBox(height: 20),
+                        if (index > 0 &&
+                            index < chatMessages.length - 1 &&
+                            !DateUtil.isSameDate(chatMessages[index + 1].timestamp, chatMessages[index].timestamp))
+                          _dateTextWidget(chatMessages[index].timestamp),
+                        if (index > 0 &&
+                            index < chatMessages.length - 1 &&
+                            !DateUtil.isSameDate(chatMessages[index + 1].timestamp, chatMessages[index].timestamp))
+                          const SizedBox(height: 20),
+                        ChatMessageComponent(chatMessage: chatMessages[index]),
+                        const SizedBox(height: 20),
+                      ],
+                    );
+                  }
+              ),
+            );
           }
         } else if (snapShot.hasError) {
           return _chatErrorScreen();
@@ -151,13 +167,12 @@ class _ChatContainerState extends State<ChatContainer> {
     );
   }
 
-  Widget _dateText(int millisecond) {
+  Widget _dateTextWidget(int millisecond) {
     return Align(
       alignment: Alignment.center,
       child: Container(
         margin: const EdgeInsets.only(top: 20, right: 10),
-        padding:
-        const EdgeInsets.symmetric(vertical: 7, horizontal: 15),
+        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 15),
         decoration: BoxDecoration(
           color: AppColors.color_59464545,
           borderRadius: BorderRadius.circular(20),
@@ -170,16 +185,77 @@ class _ChatContainerState extends State<ChatContainer> {
     );
   }
 
-  Widget _dateNotification(Stream<String> stream) {
-    return StreamBuilder(
-      stream: stream,
-      builder: (context, snapShot) {
-        if (snapShot.hasData && snapShot.data != null) {
-          return DateNotification(message: snapShot.data!);
-        } else {
-          return DateNotification(message: '');
-        }
-      },
+  Widget _dateNotificationWidget(Stream<String> stream) {
+    return Align(
+      alignment: Alignment.topRight,
+      child: StreamBuilder(
+        stream: stream,
+        builder: (context, snapShot) {
+          if (snapShot.hasData && snapShot.data != null) {
+            return DateNotification(message: snapShot.data!);
+          } else {
+            return DateNotification(message: '');
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _recentMessageNotificationWidget(Stream<ChatMessage?> stream, Function onTap) {
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: StreamBuilder(
+        stream: stream,
+        builder: (context, snapShot) {
+          if (snapShot.hasData && snapShot.data != null) {
+            ChatMessage? chatMessage = snapShot.data;
+            return chatMessage == null
+                ? Container()
+                : GestureDetector(
+                    onTap: () {
+                      onTap();
+                    },
+                    child: Container(
+                      // color: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          ChatProfileImage(chatMessage: chatMessage, width: 24, height: 24),
+                          const SizedBox(width: 5),
+                          Text(
+                            chatMessage.otherName,
+                            style: const TextStyle(fontSize: 10, color: AppColors.color_59464545),
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              chatMessage.message,
+                              style: const TextStyle(fontSize: 10, color: AppColors.color_FF000000),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const Icon(
+                            CupertinoIcons.chevron_down,
+                            size: 18,
+                            color: AppColors.color_A3E5E5E8,
+                          )
+                        ],
+                      ),
+                    ),
+                  );
+          } else {
+            return Container();
+          }
+        },
+      ),
     );
   }
 
@@ -187,11 +263,8 @@ class _ChatContainerState extends State<ChatContainer> {
     return Container(
       alignment: Alignment.center,
       child: const Text(
-        '에러 발생!!!',
-        style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: AppColors.color_FF0000FF),
+        '에러 발생 화면',
+        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.color_FF0000FF),
       ),
     );
   }
@@ -201,11 +274,8 @@ class _ChatContainerState extends State<ChatContainer> {
       child: Container(
         alignment: Alignment.center,
         child: const Text(
-          '로딩중!!!',
-          style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.color_FF000000),
+          '로딩 화면',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.color_FF000000),
         ),
       ),
     );
