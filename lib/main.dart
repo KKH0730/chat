@@ -16,8 +16,18 @@ final routeObserver = RouteObserver<ModalRoute>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
-  // await Firebase.initializeApp();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // await Firebase.initializeApp(
+  //   options: const FirebaseOptions(
+  //       apiKey: "AIzaSyAxN97k6ncdEsly3eu9m5N6EuUhuZix-zY",
+  //       authDomain: "chat-module-3187e.firebaseapp.com",
+  //       databaseURL: "https://chat-module-3187e-default-rtdb.firebaseio.com",
+  //       projectId: "chat-module-3187e",
+  //       storageBucket: "chat-module-3187e.appspot.com",
+  //       messagingSenderId: "1033869949481",
+  //       appId: "1:1033869949481:web:be91f0e9f7cd7f0e3dfa38"
+  //   ),
+  // );
   await FirebaseAuth.instance.signInAnonymously();
 
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -29,7 +39,7 @@ void main() async {
   prefs.setString('myName', '마리집사');
   prefs.setString('myProfileUri',
       'https://search.pstatic.net/common/?src=http%3A%2F%2Fblogfiles.naver.net%2FMjAyMjEyMjZfNjQg%2FMDAxNjcyMDYwODAyMjY3.r03IsCV9Lph9oh2Qk7-t9PoHjWLIAku0d5ByIApqYrgg.PPTwT3TnXlUDsA6no7kVFD4hlpQZaKQK09niW8lkonog.JPEG.alrud4430%2F1672060717954.jpg&type=a340');
-  prefs.setString('myUid', 'I4wUntHgIEfIPaUTzgoeAlG0UIu1');
+  prefs.setString('myUid', 'sIBodRy6FjMnEdTF3pz8Xs9Q7Th2');
 
   // prefs.setString('myName', '예티집사');
   // prefs.setString('myProfileUri',
@@ -41,6 +51,12 @@ void main() async {
   //     'https://mblogthumb-phinf.pstatic.net/MjAxODAxMTVfMjQg/MDAxNTE2MDA1MTI4OTk2.FXP09sHR1BHmwm6xszEG0Kw8obKdJZL7DwMEFnL_490g.HIoJkfFWiplL29ZKvumtZNiLCcCtObOkS7T6f2dsZL4g.JPEG.interpark_pet/cat_22.jpg?type=w800');
   // prefs.setString('myUid', 'UEG7B7MM8NTgidwmW1FE7v7hhjq2');
 
+  // prefs.setString('myName', '길냥이');
+  // prefs.setString('myProfileUri',
+  //     'https://t1.daumcdn.net/cfile/tistory/991011345DA7108009');
+  // prefs.setString('myUid', 'vnkRSLdxOVgyb1duqWB2tigNEg12');
+
+  print('kkhdev init : ${FirebaseAuth.instance.currentUser?.uid}');
   runApp(EasyLocalization(
       supportedLocales: const [
         Locale('en', 'US'), // English

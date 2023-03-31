@@ -28,7 +28,9 @@ class _ChatContainerState extends State<ChatContainer> {
   int firstVisibleItemIndex = 0;
   List<ChatMessage> chatMessages;
   ChatBloc chatBloc;
-  var isRenderedChatMessages = false;
+  bool isRenderedChatMessages = false;
+  StreamController<double> scrollBarStreamController = StreamController();
+  GlobalKey listViewKey = GlobalKey();
 
   _ChatContainerState({required this.chatMessages, required this.chatBloc});
 
@@ -43,9 +45,12 @@ class _ChatContainerState extends State<ChatContainer> {
 
     chatBloc.addedChatMessagePublisher.listen((value) {
       // 새로운 메세지가 왔을 떄, ListView의 offest과 가장 하단의 offest의 차이가 메세지 2개정도 차이났을 때는 가장 하단으로 스크롤 해줌
-      if (scrollController.position.minScrollExtent - scrollController.offset < 200 || value.isSender) {
-        Future.delayed(const Duration(milliseconds: 300),
-            () => scrollController.jumpTo(scrollController.position.minScrollExtent));
+      if (scrollController.offset - scrollController.position.minScrollExtent < 200 || value.isSender) {
+        scrollController.animateTo(
+            scrollController.position.minScrollExtent,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.ease
+        );
       } else {
         // 새로운 메세지가 왔을 떄, ListView의 offest과 가장 하단의 offest의 차이가 메세지 2개보다 더 차이가 나면 메세지가 왔다고 채팅 입력창 위에 알림 표시해줌.
         if (!value.isSender) {
@@ -67,7 +72,15 @@ class _ChatContainerState extends State<ChatContainer> {
     double scrollOffset = scrollController.position.pixels;
     double viewportHeight = scrollController.position.viewportDimension;
     double scrollRange = scrollController.position.maxScrollExtent - scrollController.position.minScrollExtent;
-    int firstVisibleItemIndex = (scrollOffset / (scrollRange + viewportHeight) * itemCount).floor();
+    int firstVisibleItemIndex = (scrollOffset / scrollRange * itemCount).floor();
+
+    if (listViewKey.currentContext != null) {
+      if (listViewKey.currentContext!.size != null) {
+        double listViewHeight = listViewKey.currentContext!.size!.height;
+        double scrollbarPosition = (scrollController.position.maxScrollExtent - scrollOffset) / (scrollRange + viewportHeight) * listViewHeight;
+        scrollBarStreamController.sink.add(scrollbarPosition);
+      }
+    }
 
     if (!scrollController.position.outOfRange) {
       chatBloc.showDateNotification(chatBloc.getChatMessages()[firstVisibleItemIndex].timestamp.toString());
@@ -93,7 +106,6 @@ class _ChatContainerState extends State<ChatContainer> {
         child: Stack(
           children: [
             _chatMessages(chatBloc.chatMessagesFetcher.stream),
-            _dateNotificationWidget(chatBloc.dateNotificationStream),
             _recentMessageNotificationWidget(chatBloc.recentMessageNotificationStream, () {
               chatBloc.recentMessageNotificationController.sink.add(null);
               scrollController.animateTo(
@@ -102,6 +114,16 @@ class _ChatContainerState extends State<ChatContainer> {
                   curve: Curves.ease
               );
             }),
+            StreamBuilder(
+              stream: scrollBarStreamController.stream,
+              builder: (context, snapshot) {
+                return Positioned(
+                  top: snapshot.hasData && snapshot.data != null? snapshot.data! : 0,
+                  right: 0,
+                  child: _dateNotificationWidget(chatBloc.dateNotificationStream),
+                );
+              },
+            )
           ],
         ),
       ),
@@ -128,10 +150,11 @@ class _ChatContainerState extends State<ChatContainer> {
             return Scrollbar(
               controller: scrollController,
               interactive: true,
-              thickness: 8,
+              thickness: 4,
               trackVisibility: true,
               radius: const Radius.circular(4),
               child: ListView.builder(
+                  key: listViewKey,
                   controller: scrollController,
                   reverse: true,
                   shrinkWrap: true,

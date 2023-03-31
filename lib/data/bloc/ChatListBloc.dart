@@ -86,7 +86,7 @@ class ChatListBloc {
       }
 
       if (index != -1) {
-        List<ChatMessage> tempChatMessages = entries[index].value;
+        List<ChatMessage> tempChatMessages = entries[index].value.reversed.toList();
         entries.removeAt(index);
         entries.insert(0, MapEntry(chatListTuple.item1, tempChatMessages));
         chatListFetcher.sink.add(Map.fromEntries(entries));

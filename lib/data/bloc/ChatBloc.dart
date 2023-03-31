@@ -37,7 +37,7 @@ class ChatBloc {
 
     addedChatMessagePublisher.listen((value) {
       List<ChatMessage> chatMessages = chatMessagesFetcher.hasValue && chatMessagesFetcher.value.isNotEmpty ? chatMessagesFetcher.value : [];
-      chatMessages.add(value);
+      chatMessages.insert(0, value);
       chatMessagesFetcher.sink.add(chatMessages);
     });
   }

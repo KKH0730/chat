@@ -15,6 +15,55 @@ class ChatListProvider {
       FirebaseDatabase.instance.refFromURL('https://chat-module-3187e-default-rtdb.firebaseio.com/');
   Client client = Get.find<Client>();
 
+  // StreamSubscription observeAddedChatList(PublishSubject<Tuple2<String, List<ChatMessage>>> addedChatListPublisher, String myUid) {
+  //   StreamSubscription subscription = databaseReference
+  //       .child('chat_rooms')
+  //       .child(myUid)
+  //       .orderByChild('messages/timestamp')
+  //       .endBefore(DateTime.now().millisecondsSinceEpoch)
+  //       .onChildAdded
+  //       .listen((event) async {
+  //     try {
+  //       DataSnapshot? chatListDataSnapshot;
+  //       for (var element in event.snapshot.children) {
+  //         if (element.key == 'messages') {
+  //           chatListDataSnapshot = element;
+  //         }
+  //       }
+  //
+  //       if (chatListDataSnapshot != null) {
+  //         List<ChatMessage> chatMessages = [];
+  //         ChatMessage lastChatMessage = ChatMessage.fromJson(
+  //             chatListDataSnapshot.children.last.key!, Map.from(chatListDataSnapshot.children.last.value as Map<dynamic, dynamic>));
+  //         var userInfo = await reqGetUserInfo(lastChatMessage.otherUid);
+  //
+  //         List<DataSnapshot> chatListSnapshotList = [];
+  //         if (chatListDataSnapshot.children.length <= 20) {
+  //           chatListSnapshotList = chatListDataSnapshot.children.toList().reversed.toList();
+  //         } else {
+  //           chatListSnapshotList = chatListDataSnapshot.children.toList().sublist(chatListDataSnapshot.children.length - 20, chatListDataSnapshot.children.length).reversed.toList();
+  //         }
+  //
+  //         for (DataSnapshot chatListSnapshot in chatListSnapshotList) {
+  //           var chatMap = chatListSnapshot.value as Map<dynamic, dynamic>;
+  //           ChatMessage chatMessage = ChatMessage.fromJson(chatListSnapshot.key!, Map.from(chatMap));
+  //
+  //           // 각 메세지에 유저 정보(프로필 이미지, 닉네임)를 넣어준다.
+  //           chatMessage.otherName = userInfo.name;
+  //           chatMessage.otherProfileUri = userInfo.profileUri;
+  //           chatMessages.add(chatMessage);
+  //         }
+  //         if (!addedChatListPublisher.isPaused && !addedChatListPublisher.isClosed) {
+  //           addedChatListPublisher.sink.add(Tuple2<String, List<ChatMessage>>(event.snapshot.key!, chatMessages));
+  //         }
+  //       }
+  //     } catch (e) {
+  //       print(e);
+  //     }
+  //   });
+  //   return subscription;
+  // }
+
   StreamSubscription observeAddedChatList(PublishSubject<Tuple2<String, List<ChatMessage>>> addedChatListPublisher, String myUid) {
     StreamSubscription subscription = databaseReference
         .child('chat_rooms')
