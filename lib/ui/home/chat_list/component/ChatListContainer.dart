@@ -1,20 +1,22 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chat/AppColors.dart';
 import 'package:chat/data/bloc/ChatListBloc.dart';
+import 'package:chat/data/model/ChatListItem.dart';
+import 'package:chat/data/model/ChatMessage.dart';
+import 'package:chat/main.dart';
+import 'package:chat/ui/common/CommonComponent.dart';
+import 'package:chat/utils/DateUtil.dart';
 import 'package:flutter/material.dart';
-
-import '../../../../AppColors.dart';
-import '../../../../data/model/ChatMessage.dart';
-import '../../../../main.dart';
-import '../../../../utils/DateUtil.dart';
-import 'ChatListProfileImage.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class ChatListContainer extends StatefulWidget {
   const ChatListContainer({super.key});
 
   @override
-  State<StatefulWidget> createState() => ChatListState();
+  State<StatefulWidget> createState() => _ChatListState();
 }
 
-class ChatListState extends State<ChatListContainer> with RouteAware {
+class _ChatListState extends State<ChatListContainer> with RouteAware {
   ChatListBloc chatListBloc = ChatListBloc();
 
   @override
@@ -36,11 +38,17 @@ class ChatListState extends State<ChatListContainer> with RouteAware {
   @override
   void didPushNext() {
     super.didPush();
+
+    // 채팅방 입장
+    chatListBloc.pauseSubscription();
   }
 
   @override
   void didPopNext() {
     super.didPopNext();
+
+    // 채팅방 -> 채팅 리스트 화면으로 돌아옴
+    chatListBloc.resumeSubscription();
   }
 
   @override
@@ -57,16 +65,18 @@ class ChatListState extends State<ChatListContainer> with RouteAware {
                   itemCount: chatLisMap.length,
                   itemBuilder: (context, index) {
                     var key = chatLisMap.keys.elementAt(index);
-                    List<ChatMessage>? chatMessages = chatLisMap[key];
-                    return GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, '/ChatScreen', arguments: chatMessages),
-                      child: chatMessages == null || chatMessages.isEmpty
-                          ? Container()
-                          : ChatListUnit(chatMessages[0]),
+                    ChatListItem? chatListItem = chatLisMap[key];
+                    return chatListItem == null || chatListItem.chatMessages.isEmpty
+                        ? Container()
+                        : GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/ChatScreen', arguments: chatListItem.chatMessages);
+                          },
+                        child: _chatListUnit(chatListItem)
                     );
                   });
             } else if (snapshot.hasError) {
-              return const ChatListErrorScreen();
+              return const ErrorScreen();
             } else {
               return const LoadingScreen();
             }
@@ -75,15 +85,9 @@ class ChatListState extends State<ChatListContainer> with RouteAware {
       ),
     );
   }
-}
 
-class ChatListUnit extends StatelessWidget {
-  late ChatMessage chatMessage;
-
-  ChatListUnit(this.chatMessage, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _chatListUnit(ChatListItem chatListItem) {
+    ChatMessage chatMessage = chatListItem.chatMessages[0];
     return Container(
         height: 75,
         color: Colors.transparent,
@@ -91,76 +95,79 @@ class ChatListUnit extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(width: 50, height: 50, child: ChatListProfileImage(chatMessage: chatMessage)),
+            SizedBox(width: 50, height: 50, child: _chatListProfileImage(chatMessage)),
             const SizedBox(width: 20),
             Expanded(
                 child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    chatMessage.otherName,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.color_FF000000),
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          chatMessage.otherName,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.color_FF000000),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          chatMessage.message,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.normal,
+                            color: AppColors.color_C2A0A0A1,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ]
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    chatMessage.message,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.normal,
-                      color: AppColors.color_A3A3A8CD,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            )),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
-              child: Align(
-                alignment: Alignment.topRight,
-                child: Text(
+                )
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
                   DateUtil.getChatLastDate(chatMessage.timestamp),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: AppColors.color_A3A3A8CD),
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.normal, color: AppColors.color_C2A0A0A1),
                 ),
-              ),
+                const SizedBox(height: 5),
+                if (chatListItem.unCheckedMessageCount > 0)
+                  Container(
+                      decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.red
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(5.0),
+                        child: Text(
+                          chatListItem.unCheckedMessageCount > 99 ? "99+" : chatListItem.unCheckedMessageCount.toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 8, fontWeight: FontWeight.normal, color: AppColors.color_FFFFFFFF),
+                        ),
+                      )
+                  ),
+                if (chatListItem.unCheckedMessageCount <= 0)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                  )
+              ],
             )
           ],
-        ));
-  }
-}
-
-class ChatListErrorScreen extends StatelessWidget {
-  const ChatListErrorScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      alignment: Alignment.center,
-      child: const Text(
-        '에러 발생!!!',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.color_FF0000FF),
-      ),
+        )
     );
   }
-}
 
-class LoadingScreen extends StatelessWidget {
-  const LoadingScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        alignment: Alignment.center,
-        child: const Text(
-          '로딩중!!!',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.color_FF000000),
-        ),
-      ),
+  Widget _chatListProfileImage(ChatMessage chatMessage) {
+    return CircleAvatar(
+      backgroundColor: Colors.transparent,
+      backgroundImage: chatMessage.otherProfileUri.isNotEmpty
+          ? CachedNetworkImageProvider(
+        chatMessage.otherProfileUri,
+        cacheManager: DefaultCacheManager(),
+      )
+          : Image.asset('assets/images/ic_user_default.png').image,
     );
   }
 }

@@ -1,16 +1,16 @@
 import 'dart:async';
 
+import 'package:chat/AppColors.dart';
 import 'package:chat/data/bloc/ChatBloc.dart';
 import 'package:chat/data/model/ChatMessage.dart';
+import 'package:chat/ui/common/CommonComponent.dart';
 import 'package:chat/utils/DateUtil.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-import '../../../../../AppColors.dart';
 import 'ChatMessageComponent.dart';
 import 'ChatProfileImage.dart';
-import 'DateNotification.dart';
 
 class ChatContainer extends StatefulWidget {
   List<ChatMessage> chatMessages;
@@ -39,9 +39,10 @@ class _ChatContainerState extends State<ChatContainer> {
     super.initState();
     scrollController.addListener(_scrollListener);
 
-    var lastChatMessage = chatMessages[chatMessages.length - 1];
+    var lastChatMessage = chatMessages[0];
+
     chatBloc.observeAddedChatMessage(
-        lastChatMessage.myUid, lastChatMessage.otherUid, lastChatMessage.myProfileUri, lastChatMessage.otherProfileUri);
+        lastChatMessage.myUid, lastChatMessage.otherUid, lastChatMessage.myProfileUri, lastChatMessage.otherProfileUri, lastChatMessage.timestamp);
 
     chatBloc.addedChatMessagePublisher.listen((value) {
       // 새로운 메세지가 왔을 떄, ListView의 offest과 가장 하단의 offest의 차이가 메세지 2개정도 차이났을 때는 가장 하단으로 스크롤 해줌
@@ -63,6 +64,9 @@ class _ChatContainerState extends State<ChatContainer> {
   @override
   void dispose() {
     chatBloc.dispose();
+    if (chatMessages.isNotEmpty) {
+      chatBloc.fetchUnCheckedMessageCountZero(chatMessages.first.myUid, chatMessages.first.otherUid);
+    }
     scrollController.removeListener(_scrollListener);
     super.dispose();
   }
@@ -90,7 +94,8 @@ class _ChatContainerState extends State<ChatContainer> {
     }
 
     if (scrollController.offset.floor() == scrollController.position.maxScrollExtent.floor() && chatMessages.isNotEmpty) {
-      var firstChatMessage = chatMessages.last;
+      var firstChatMessage = chatBloc.getChatMessages().last;
+
       chatBloc.reqPreviousMessage(firstChatMessage.myUid, firstChatMessage.otherUid, firstChatMessage.myProfileUri,
           firstChatMessage.otherProfileUri, firstChatMessage.timestamp, firstChatMessage.message);
     }
@@ -100,34 +105,35 @@ class _ChatContainerState extends State<ChatContainer> {
   Widget build(BuildContext context) {
     return Expanded(
         child: GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Container(
-        color: AppColors.color_FFBFCDDF,
-        child: Stack(
-          children: [
-            _chatMessages(chatBloc.chatMessagesFetcher.stream),
-            _recentMessageNotificationWidget(chatBloc.recentMessageNotificationStream, () {
-              chatBloc.recentMessageNotificationController.sink.add(null);
-              scrollController.animateTo(
-                  scrollController.position.minScrollExtent,
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.ease
-              );
-            }),
-            StreamBuilder(
-              stream: scrollBarStreamController.stream,
-              builder: (context, snapshot) {
-                return Positioned(
-                  top: snapshot.hasData && snapshot.data != null? snapshot.data! : 0,
-                  right: 0,
-                  child: _dateNotificationWidget(chatBloc.dateNotificationStream),
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Container(
+          color: AppColors.color_FFBFCDDF,
+          child: Stack(
+            children: [
+              _chatMessages(chatBloc.chatMessagesFetcher.stream),
+              _recentMessageNotificationWidget(chatBloc.recentMessageNotificationStream, () {
+                chatBloc.recentMessageNotificationController.sink.add(null);
+                scrollController.animateTo(
+                    scrollController.position.minScrollExtent,
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.ease
                 );
-              },
-            )
-          ],
+              }),
+              StreamBuilder(
+                stream: scrollBarStreamController.stream,
+                builder: (context, snapshot) {
+                  return Positioned(
+                    top: snapshot.hasData && snapshot.data != null? snapshot.data! : 0,
+                    right: 0,
+                    child: _dateNotificationWidget(chatBloc.dateNotificationStream),
+                  );
+                  },
+              )
+            ],
+          ),
         ),
-      ),
-    ));
+        )
+    );
   }
 
   Widget _chatMessages(Stream<List<ChatMessage>> stream) {
@@ -137,7 +143,7 @@ class _ChatContainerState extends State<ChatContainer> {
         if (snapShot.hasData) {
           List<ChatMessage>? chatMessages = snapShot.data;
           if (chatMessages == null) {
-            return _chatErrorScreen();
+            return const ErrorScreen();
           } else if (chatMessages.isEmpty) {
             return Container();
           } else {
@@ -182,9 +188,9 @@ class _ChatContainerState extends State<ChatContainer> {
             );
           }
         } else if (snapShot.hasError) {
-          return _chatErrorScreen();
+          return const ErrorScreen();
         } else {
-          return _chatLoadingScreen();
+          return const LoadingScreen();
         }
       },
     );
@@ -215,12 +221,39 @@ class _ChatContainerState extends State<ChatContainer> {
         stream: stream,
         builder: (context, snapShot) {
           if (snapShot.hasData && snapShot.data != null) {
-            return DateNotification(message: snapShot.data!);
+            return _dateNotification(snapShot.data!);
           } else {
-            return DateNotification(message: '');
+            return _dateNotification('');
           }
         },
       ),
+    );
+  }
+
+  Widget _dateNotification(String message) {
+    return FutureBuilder(
+      future: Future.delayed(const Duration(milliseconds: 600)),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return message.isEmpty
+              ? Container()
+              : Container(
+            margin: const EdgeInsets.only(top: 20, right: 10),
+            padding:
+            const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+            decoration: BoxDecoration(
+              color: AppColors.color_7B000000,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.white, fontSize: 10),
+            ),
+          );
+        } else {
+          return const SizedBox.shrink();
+        }
+      },
     );
   }
 
@@ -278,28 +311,6 @@ class _ChatContainerState extends State<ChatContainer> {
             return Container();
           }
         },
-      ),
-    );
-  }
-
-  Widget _chatErrorScreen() {
-    return Container(
-      alignment: Alignment.center,
-      child: const Text(
-        '에러 발생 화면',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.color_FF0000FF),
-      ),
-    );
-  }
-
-  Widget _chatLoadingScreen() {
-    return Expanded(
-      child: Container(
-        alignment: Alignment.center,
-        child: const Text(
-          '로딩 화면',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.color_FF000000),
-        ),
       ),
     );
   }

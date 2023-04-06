@@ -1,10 +1,10 @@
 import 'package:chat/AppColors.dart';
 import 'package:chat/data/bloc/ChatBloc.dart';
+import 'package:chat/data/model/ChatMessage.dart';
 import 'package:chat/ui/home/chat_list/chat/component/ChatContainer.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../data/model/ChatMessage.dart';
 import 'component/ChatInputContainer.dart';
 
 class ChatScreen extends StatelessWidget {

@@ -20,7 +20,7 @@ class DateUtil {
       hour = hour % 12;
       hour = hour == 0 ? 12 : hour;
       int minute = targetDateTime.minute;
-      return '$amOrPm $hour시 $minute분';
+      return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
     } else if (daysDifference == 1) {
       // 어제라면 "어제"를 출력합니다.
       return '어제';
@@ -31,7 +31,7 @@ class DateUtil {
         return '${targetDateTime.month}월 ${targetDateTime.day}일';
       } else {
         // 년도가 다른 경우에는 년, 월, 일을 출력합니다.
-        return '${targetDateTime.year}년 ${targetDateTime.month}월 ${targetDateTime.day}일';
+        return '${targetDateTime.year}. ${targetDateTime.month}. ${targetDateTime.day}.';
       }
     }
   }

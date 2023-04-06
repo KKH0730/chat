@@ -1,7 +1,6 @@
 import 'dart:async';
-import 'dart:collection';
 
-import 'package:chat/data/bloc/ChatListBloc.dart';
+import 'package:chat/data/model/ChatListItem.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart';
@@ -15,56 +14,26 @@ class ChatListProvider {
       FirebaseDatabase.instance.refFromURL('https://chat-module-3187e-default-rtdb.firebaseio.com/');
   Client client = Get.find<Client>();
 
-  // StreamSubscription observeAddedChatList(PublishSubject<Tuple2<String, List<ChatMessage>>> addedChatListPublisher, String myUid) {
-  //   StreamSubscription subscription = databaseReference
-  //       .child('chat_rooms')
-  //       .child(myUid)
-  //       .orderByChild('messages/timestamp')
-  //       .endBefore(DateTime.now().millisecondsSinceEpoch)
-  //       .onChildAdded
-  //       .listen((event) async {
-  //     try {
-  //       DataSnapshot? chatListDataSnapshot;
-  //       for (var element in event.snapshot.children) {
-  //         if (element.key == 'messages') {
-  //           chatListDataSnapshot = element;
-  //         }
-  //       }
-  //
-  //       if (chatListDataSnapshot != null) {
-  //         List<ChatMessage> chatMessages = [];
-  //         ChatMessage lastChatMessage = ChatMessage.fromJson(
-  //             chatListDataSnapshot.children.last.key!, Map.from(chatListDataSnapshot.children.last.value as Map<dynamic, dynamic>));
-  //         var userInfo = await reqGetUserInfo(lastChatMessage.otherUid);
-  //
-  //         List<DataSnapshot> chatListSnapshotList = [];
-  //         if (chatListDataSnapshot.children.length <= 20) {
-  //           chatListSnapshotList = chatListDataSnapshot.children.toList().reversed.toList();
-  //         } else {
-  //           chatListSnapshotList = chatListDataSnapshot.children.toList().sublist(chatListDataSnapshot.children.length - 20, chatListDataSnapshot.children.length).reversed.toList();
-  //         }
-  //
-  //         for (DataSnapshot chatListSnapshot in chatListSnapshotList) {
-  //           var chatMap = chatListSnapshot.value as Map<dynamic, dynamic>;
-  //           ChatMessage chatMessage = ChatMessage.fromJson(chatListSnapshot.key!, Map.from(chatMap));
-  //
-  //           // 각 메세지에 유저 정보(프로필 이미지, 닉네임)를 넣어준다.
-  //           chatMessage.otherName = userInfo.name;
-  //           chatMessage.otherProfileUri = userInfo.profileUri;
-  //           chatMessages.add(chatMessage);
-  //         }
-  //         if (!addedChatListPublisher.isPaused && !addedChatListPublisher.isClosed) {
-  //           addedChatListPublisher.sink.add(Tuple2<String, List<ChatMessage>>(event.snapshot.key!, chatMessages));
-  //         }
-  //       }
-  //     } catch (e) {
-  //       print(e);
-  //     }
-  //   });
-  //   return subscription;
-  // }
 
-  StreamSubscription observeAddedChatList(PublishSubject<Tuple2<String, List<ChatMessage>>> addedChatListPublisher, String myUid) {
+  void fetchUnCheckedMessageCount(String myUid, String otherUid) {
+    var databaseRef = databaseReference
+        .child('chat_rooms')
+        .child(myUid)
+        .child('${myUid}_$otherUid');
+
+    databaseRef.runTransaction((Object? transaction) {
+      if (transaction == null) {
+        return Transaction.abort();
+      }
+
+      Map<String, dynamic> chatMessagesMap = Map<String, dynamic>.from(transaction as Map);
+      chatMessagesMap['unCheckedMessageCount'] = (chatMessagesMap['unCheckedMessageCount'] ?? 0) + 1;
+
+      return Transaction.success(chatMessagesMap);
+    });
+  }
+
+  StreamSubscription observeAddedChatList(PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher, String myUid) {
     StreamSubscription subscription = databaseReference
         .child('chat_rooms')
         .child(myUid)
@@ -74,16 +43,29 @@ class ChatListProvider {
         .listen((event) async {
           try {
             List<ChatMessage> chatMessages = [];
-            ChatMessage lastChatMessage = ChatMessage.fromJson(
-                event.snapshot.children.last.key!, Map.from(event.snapshot.children.last.value as Map<dynamic, dynamic>));
-            var userInfo = await reqGetUserInfo(lastChatMessage.otherUid);
+            int unCheckedMessage = 0;
 
             List<DataSnapshot> chatListSnapshotList = [];
-            if (event.snapshot.children.length <= 20) {
-              chatListSnapshotList = event.snapshot.children.toList().reversed.toList();
-            } else {
-              chatListSnapshotList = event.snapshot.children.toList().sublist(event.snapshot.children.length - 20, event.snapshot.children.length).reversed.toList();
+            for (DataSnapshot element in event.snapshot.children.toList().reversed) {
+              if (chatListSnapshotList.length >= 20) {
+                break;
+              }
+
+              if (element.key == 'unCheckedMessageCount') {
+                continue;
+              }
+
+              chatListSnapshotList.add(element);
             }
+
+            if (chatListSnapshotList.isEmpty) {
+              return;
+            }
+
+            ChatMessage lastChatMessage = ChatMessage.fromJson(
+                chatListSnapshotList.first.key!, Map.from(chatListSnapshotList.first.value as Map<dynamic, dynamic>));
+            var userInfo = await reqGetUserInfo(lastChatMessage.otherUid);
+
 
             for (DataSnapshot chatListSnapshot in chatListSnapshotList) {
               var chatMap = chatListSnapshot.value as Map<dynamic, dynamic>;
@@ -95,7 +77,8 @@ class ChatListProvider {
               chatMessages.add(chatMessage);
             }
             if (!addedChatListPublisher.isPaused && !addedChatListPublisher.isClosed) {
-              addedChatListPublisher.sink.add(Tuple2<String, List<ChatMessage>>(event.snapshot.key!, chatMessages));
+              ChatListItem chatListItem = ChatListItem(unCheckedMessageCount: unCheckedMessage, chatMessages: chatMessages);
+              addedChatListPublisher.sink.add(Tuple2<String, ChatListItem>(event.snapshot.key!, chatListItem));
             }
           } catch (e) {
             print(e);
@@ -104,21 +87,40 @@ class ChatListProvider {
     return subscription;
   }
 
-  StreamSubscription observeChangedChild(PublishSubject<Tuple2<String, List<ChatMessage>>> changedChatListPublisher, String myUid) {
+  StreamSubscription observeChangedChild(PublishSubject<Tuple2<String, ChatListItem>> changedChatListPublisher, String myUid) {
     StreamSubscription subscription = databaseReference
         .child('chat_rooms')
         .child(myUid)
+        .orderByChild('timestamp')
+        .endBefore(DateTime.now().millisecondsSinceEpoch)
         .onChildChanged
         .listen((event) async {
-          try {
+
+      try {
             List<ChatMessage> chatMessages = [];
-            for (DataSnapshot chatListSnapshot in event.snapshot.children) {
+            int unCheckedMessage = 0;
+
+            List<DataSnapshot> dataSnapshotList = event.snapshot.children.toList();
+            if (dataSnapshotList.last.key == 'unCheckedMessageCount') {
+              unCheckedMessage = dataSnapshotList.last.value as int;
+              dataSnapshotList.removeAt(event.snapshot.children.length - 1);
+            }
+
+            List<DataSnapshot> chatListSnapshotList = [];
+            if (dataSnapshotList.length <= 20) {
+              chatListSnapshotList = dataSnapshotList.toList();
+            } else {
+              chatListSnapshotList = dataSnapshotList.toList().sublist(dataSnapshotList.length - 20, dataSnapshotList.length);
+            }
+
+            for (DataSnapshot chatListSnapshot in chatListSnapshotList) {
               var chatMap = chatListSnapshot.value as Map<dynamic, dynamic>;
               ChatMessage chatMessage = ChatMessage.fromJson(chatListSnapshot.key!, Map.from(chatMap));
               chatMessages.add(chatMessage);
             }
             if (!changedChatListPublisher.isPaused && !changedChatListPublisher.isClosed) {
-              changedChatListPublisher.sink.add(Tuple2<String, List<ChatMessage>>(event.snapshot.key!, chatMessages));
+              ChatListItem chatListItem = ChatListItem(unCheckedMessageCount: unCheckedMessage, chatMessages: chatMessages);
+              changedChatListPublisher.sink.add(Tuple2<String, ChatListItem>(event.snapshot.key!, chatListItem));
             }
           } catch (e) {
             print(e);
@@ -132,12 +134,12 @@ class ChatListProvider {
       final DatabaseEvent userInfoQueryEvent = await databaseReference.child('user_info').child(otherUid).once();
       if (userInfoQueryEvent.snapshot.value != null) {
         Map<dynamic, dynamic> userInfoMap = userInfoQueryEvent.snapshot.value as Map<dynamic, dynamic>;
-        return UserInfo(name: userInfoMap['name'], profileUri: userInfoMap['profileUri']);
+        return UserInfo(uid: userInfoMap['uid'], name: userInfoMap['name'], profileUri: userInfoMap['profileUri']);
       } else {
-        return UserInfo(name: '', profileUri: '');
+        return UserInfo(uid: '', name: '', profileUri: '');
       }
     } catch (e) {
-      return UserInfo(name: '', profileUri: '');
+      return UserInfo(uid: '', name: '', profileUri: '');
     }
   }
 }

@@ -1,8 +1,8 @@
 import 'package:chat/AppColors.dart';
+import 'package:chat/data/model/ChatMessage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../../data/model/ChatMessage.dart';
 import 'ChatProfileImage.dart';
 
 class ChatMessageComponent extends StatelessWidget {
@@ -27,26 +27,34 @@ class ChatMessageComponent extends StatelessWidget {
               ? CrossAxisAlignment.start
               : CrossAxisAlignment.end,
           children: [
-            ChatBubble(chatMessage: chatMessage),
+            _chatBubble(chatMessage, context),
             const SizedBox(height: 5),
-            ChatTime(chatMessage: chatMessage),
+            _chatTime(chatMessage),
           ],
         ))
       ],
     );
   }
-}
 
-class ChatBubble extends StatelessWidget {
-  late ChatMessage chatMessage;
+  Widget _chatTime(ChatMessage chatMessage) {
+    DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(chatMessage.timestamp);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Text(
+        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}',
+        style: const TextStyle(
+          fontSize: 9,
+          fontStyle: FontStyle.normal,
+          fontWeight: FontWeight.w300,
+        ),
+      ),
+    );
+  }
 
-  ChatBubble({super.key, required this.chatMessage});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _chatBubble(ChatMessage chatMessage, BuildContext context) {
     return Container(
       constraints:
-          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.65),
+      BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.65),
       decoration: BoxDecoration(
         color: chatMessage.isSender
             ? AppColors.color_FFFFE10C
@@ -62,29 +70,6 @@ class ChatBubble extends StatelessWidget {
           fontSize: 14,
           fontStyle: FontStyle.normal,
           fontWeight: FontWeight.w400,
-        ),
-      ),
-    );
-  }
-}
-
-class ChatTime extends StatelessWidget {
-  late ChatMessage chatMessage;
-
-  ChatTime({super.key, required this.chatMessage});
-
-  @override
-  Widget build(BuildContext context) {
-    DateTime dateTime =
-        DateTime.fromMillisecondsSinceEpoch(chatMessage.timestamp);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: Text(
-        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}',
-        style: const TextStyle(
-          fontSize: 9,
-          fontStyle: FontStyle.normal,
-          fontWeight: FontWeight.w300,
         ),
       ),
     );

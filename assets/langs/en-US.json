@@ -1,6 +1,7 @@
 {
   "main_header" : "Chatting Example App",
   "enter" : "Enter",
+  "friends_list_header" : "Friends",
   "chat_list_header" : "Chatting",
   "chat_list_menu_0" : "Search",
   "chat_list_menu_1" : "Sort",
