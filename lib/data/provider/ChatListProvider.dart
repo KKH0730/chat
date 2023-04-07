@@ -52,6 +52,7 @@ class ChatListProvider {
               }
 
               if (element.key == 'unCheckedMessageCount') {
+                unCheckedMessage = element.value as int;
                 continue;
               }
 
@@ -140,6 +141,36 @@ class ChatListProvider {
       }
     } catch (e) {
       return UserInfo(uid: '', name: '', profileUri: '');
+    }
+  }
+
+  Future<List<ChatMessage>> getChatMessagesWithChatGPT(String myUid, String otherUid, String otherName) async {
+    DatabaseEvent event = await databaseReference
+        .child('chat_gpt_rooms')
+        .child(myUid)
+        .child('${myUid}_$otherUid')
+        .orderByChild('timestamp')
+        .endBefore(DateTime.now().millisecondsSinceEpoch)
+        .once();
+
+    try {
+      List<ChatMessage> chatMessages = [];
+      for (DataSnapshot element in event.snapshot.children.toList().reversed) {
+        if (chatMessages.length >= 20) {
+          break;
+        }
+
+        if (element.key == 'unCheckedMessageCount') {
+          continue;
+        }
+        var chatMap = element.value as Map<dynamic, dynamic>;
+        ChatMessage chatMessage = ChatMessage.fromJson(element.key!, Map.from(chatMap));
+        chatMessages.add(chatMessage);
+      }
+      return chatMessages;
+    } catch (e) {
+      print('error : $e');
+      return [];
     }
   }
 }

@@ -18,6 +18,7 @@ class ChatListBloc {
 
   PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher = PublishSubject();
   PublishSubject<Tuple2<String, ChatListItem>> changedChatListPublisher = PublishSubject();
+  PublishSubject<List<ChatMessage>> chatMessagesWithChatGPTPublisher = PublishSubject();
   List<StreamSubscription> chatListSubscriptionList = [];
 
   // onChangedChild 호출 시 UserInfo(상대방의 Name과 ProfieUri)를 다시 호출하지 않기 위해 저장
@@ -101,6 +102,11 @@ class ChatListBloc {
       chatListSubscriptionList.add(chatListRepository.observeAddedChatList(addedChatListPublisher, user!.uid));
       chatListSubscriptionList.add(chatListRepository.observeChangedChild(changedChatListPublisher, user!.uid));
     }
+  }
+
+  void getChatMessagesWithChatGPT(String myUid, String otherUid, String otherName) async {
+    List<ChatMessage> chatMessages = await chatListRepository.getChatMessagesWithChatGPT(myUid, otherUid, otherName);
+    chatMessagesWithChatGPTPublisher.sink.add(chatMessages);
   }
 
   void pauseSubscription() {

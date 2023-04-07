@@ -9,6 +9,7 @@ class ChatMessage {
   String myProfileUri = '';
   String otherProfileUri = '';
   bool isSender;
+  bool isLoading = false;
 
   ChatMessage({
     required this.messageId,

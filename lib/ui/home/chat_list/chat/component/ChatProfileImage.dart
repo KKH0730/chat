@@ -8,12 +8,15 @@ class ChatProfileImage extends StatelessWidget {
   ChatMessage chatMessage;
   double width;
   double height;
+  bool isChatWithChatGPT;
 
-  ChatProfileImage(
-      {super.key,
-      required this.chatMessage,
-      required this.width,
-      required this.height});
+  ChatProfileImage({
+    super.key,
+    required this.chatMessage,
+    required this.width,
+    required this.height,
+    required this.isChatWithChatGPT
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,12 +25,13 @@ class ChatProfileImage extends StatelessWidget {
       height: height,
       child: CircleAvatar(
         backgroundColor: Colors.transparent,
-        backgroundImage: chatMessage.otherProfileUri.isNotEmpty
+        backgroundImage: isChatWithChatGPT ? Image.asset('assets/images/img_android.png').image
+            : (chatMessage.otherProfileUri.isNotEmpty
             ? CachedNetworkImageProvider(
                 chatMessage.otherProfileUri,
                 cacheManager: DefaultCacheManager(),
               )
-            : Image.asset('assets/images/ic_user_default.png').image,
+            : Image.asset('assets/images/ic_user_default.png').image),
       ),
     );
   }

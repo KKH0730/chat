@@ -33,7 +33,7 @@ class HomeScreen extends StatelessWidget {
             case 0:
               return FriendsListScreen();
             case 1:
-              return const ChatListScreen();
+              return ChatListScreen();
             case 2:
               return Container();
             case 3:

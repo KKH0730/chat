@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chat/data/model/ChatMessage.dart';
 import 'package:get/get.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:tuple/tuple.dart';
@@ -16,4 +17,7 @@ class ChatListRepository {
 
   StreamSubscription observeChangedChild(PublishSubject<Tuple2<String, ChatListItem>> changedChatListPublisher, String myUid) =>
       chatListProvider.observeChangedChild(changedChatListPublisher, myUid);
+
+  Future<List<ChatMessage>> getChatMessagesWithChatGPT(String myUid, String otherUid, String otherName) =>
+      chatListProvider.getChatMessagesWithChatGPT(myUid, otherUid, otherName);
 }

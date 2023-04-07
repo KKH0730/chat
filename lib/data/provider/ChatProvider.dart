@@ -1,58 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as network;
-import 'package:http/http.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:get/get.dart';
 import 'package:rxdart/rxdart.dart';
 
 import '../model/ChatMessage.dart';
 import '../model/Result.dart';
 
 class ChatProvider {
-  final CHAT_GPT_API_KEY = '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';
   final DatabaseReference databaseReference = FirebaseDatabase.instance.refFromURL('https://chat-module-3187e-default-rtdb.firebaseio.com/');
-
-  void fetchMessageToChatGPT(String inputText, PublishSubject<ChatMessage> chatGPTMessagePublisher) async {
-    final response = await network.post(
-      Uri.parse('https://api.openai.com/v1/chat/completions'),
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': 'Bearer $CHAT_GPT_API_KEY',
-      },
-      body: json.encode({
-        'model': 'gpt-3.5-turbo',
-        'messages': [{'role': 'user', 'content': inputText}],
-        'max_tokens': 200,
-        'temperature': 0.5,
-        'n': 1
-      }),
-    );
-
-    Map<String, dynamic> responseData = json.decode(utf8.decode(response.bodyBytes));
-    print('kkhedv 11 :${json.decode(utf8.decode(response.bodyBytes))}');
-    List<dynamic> list = responseData['choices'];
-    print('kkhedv 22 :${list[0]['message']['content']}');
-  }
-
-  StreamSubscription observeOtherConnectionState(PublishSubject<bool> otherConnectionPublisher, String myUid, String otherUid) {
-    final DatabaseReference ref = FirebaseDatabase.instance.refFromURL('https://chat-module-3187e-default-rtdb.firebaseio.com/');
-    StreamSubscription subscription = ref.child('connections')
-        .child(otherUid)
-        .onValue
-        .listen((event) {
-      if (event.snapshot.value != null) {
-        Map<dynamic, dynamic> map = event.snapshot.value as Map<dynamic, dynamic>;
-        otherConnectionPublisher.sink.add(map['isConnected']);
-      }
-    });
-    return subscription;
-  }
+  String openai_api_key = '';
 
   StreamSubscription reqChatMessages(PublishSubject<ChatMessage> addedChatMessagePublisher, String myUid,
-      String otherUid, String myProfileUri, String otherProfileUri, int lastTimeStamp) {
+      String otherUid, String myProfileUri, String otherProfileUri, int lastTimeStamp, bool isChatWithChatGPT) {
     StreamSubscription subscription = databaseReference
-        .child('chat_rooms')
+        .child(isChatWithChatGPT ? 'chat_gpt_rooms' : 'chat_rooms')
         .child(myUid)
         .child('${myUid}_$otherUid')
         .orderByChild('timestamp')
@@ -96,7 +58,7 @@ class ChatProvider {
 
     return chatMessages;
   }
-  Future<Result<bool>> fetchChatMessage(
+  void fetchChatMessage(
       String message,
       String myName,
       String myUid,
@@ -127,27 +89,32 @@ class ChatProvider {
       map['otherName'] = myName;
       map['otherUid'] = myUid;
 
-      var otherDatabaseRef = databaseReference.child('chat_rooms')
+      await databaseReference.child('chat_rooms')
           .child(otherUid)
-          .child('${otherUid}_$myUid');
+          .child('${otherUid}_$myUid')
+          .child(timeMillisecond.toString())
+          .update(map);
 
-      await otherDatabaseRef.runTransaction((Object? transaction) {
-        if (transaction == null) {
-          print('kkhdev 111');
-          return Transaction.abort();
-        }
-        Map<String, dynamic> chatMessagesMap = Map<String, dynamic>.from(transaction as Map);
-        chatMessagesMap['unCheckedMessageCount'] = (chatMessagesMap['unCheckedMessageCount'] ?? 0) + 1;
-        return Transaction.success(chatMessagesMap);
-      });
+      await databaseReference.child('chat_rooms')
+          .child(otherUid)
+          .child('${otherUid}_$myUid')
 
-      await otherDatabaseRef.child(timeMillisecond.toString()).update(map);
-
-
-      return Result(success: true);
+          .runTransaction((Object? transaction) {
+            if (transaction == null) {
+              return Transaction.abort();
+            }
+            if(transaction is Map) {
+              Map<String, dynamic> chatMessagesMap = Map<String, dynamic>.from(transaction);
+              chatMessagesMap['unCheckedMessageCount'] = (chatMessagesMap['unCheckedMessageCount'] ?? 0) + 1;
+              print('kkhdev 222');
+              return Transaction.success(chatMessagesMap);
+            } else {
+              print('kkhdev 333');
+              return Transaction.success({'unCheckedMessageCount': 1});
+            }
+          });
     } catch (e) {
-      print(e);
-      return Result(success: false);
+      print('kkhdev error : $e');
     }
   }
 
@@ -157,5 +124,76 @@ class ChatProvider {
         .child(myUid)
         .child('${myUid}_$otherUid')
         .update({ 'unCheckedMessageCount': 0 });
+  }
+
+  void fetchMessageToChatGPT(String myUid, String myName, String inputText, PublishSubject<String> chatGPTMessagePublisher) async {
+    if (openai_api_key.isEmpty) {
+      DatabaseEvent event = await databaseReference.child('key').once();
+      var keyMap = Map.from(event.snapshot.value as Map<dynamic, dynamic>);
+      openai_api_key = keyMap['openai_api_key'];
+    }
+
+    if (openai_api_key.isEmpty) {
+      return;
+    }
+
+    final response = await network.post(
+      Uri.parse('https://api.openai.com/v1/chat/completions'),
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer $openai_api_key'
+      },
+      body: json.encode({
+        'model': 'gpt-3.5-turbo',
+        'messages': [{'role': 'user', 'content': inputText}],
+        'max_tokens': 200,
+        'temperature': 0.5,
+        'n': 5,
+      }),
+    );
+
+    Map<String, dynamic> responseData = json.decode(utf8.decode(response.bodyBytes));
+    if (response.statusCode == 200) {
+      List<dynamic> list = responseData['choices'];
+      String content = list[0]['message']['content'] ?? '';
+      if (content.isNotEmpty) {
+        chatGPTMessagePublisher.sink.add(content);
+      }
+    } else {
+      String errorMessage = responseData['error']['message'] ?? '';
+      if (errorMessage.isNotEmpty) {
+        chatGPTMessagePublisher.sink.add(errorMessage);
+      }
+    }
+  }
+
+  Future<void> fetchChatMessageWithChatGPT(
+      String message,
+      String myName,
+      String myUid,
+      String otherName,
+      String otherUid,
+      int timeMillisecond,
+      bool isSendToChatGTP
+  ) async {
+    try {
+      var map = {
+        'isSender': isSendToChatGTP ? true : false,
+        'timestamp': timeMillisecond,
+        'message': message,
+        'myName': myName,
+        'myUid': myUid,
+        'otherName': otherName,
+        'otherUid': otherUid
+      };
+      await databaseReference
+          .child('chat_gpt_rooms')
+          .child(myUid)
+          .child('${myUid}_$otherUid')
+          .child(timeMillisecond.toString())
+          .update(map);
+    } catch (e) {
+      print(e);
+    }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:chat/AppColors.dart';
 import 'package:chat/data/bloc/ChatBloc.dart';
 import 'package:chat/data/model/ChatMessage.dart';
+import 'package:chat/data/model/UserInfo.dart';
 import 'package:chat/ui/home/chat_list/chat/component/ChatContainer.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -10,15 +11,12 @@ import 'component/ChatInputContainer.dart';
 class ChatScreen extends StatelessWidget {
   late ChatBloc chatBloc;
 
-  ChatScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
-    late List<ChatMessage> chatMessages =
-        ModalRoute.of(context)?.settings.arguments as List<ChatMessage>;
+    Map<dynamic, dynamic> friendInfo = ModalRoute.of(context)?.settings.arguments as Map<dynamic, dynamic>;
+    UserInfo otherUserInfo = friendInfo['otherUserInfo'] as UserInfo;
+    List<ChatMessage> chatMessages = friendInfo['chatMessages'] as List<ChatMessage>;
     chatBloc = ChatBloc(chatMessages: chatMessages);
-
-    ChatMessage lastChatMessage = chatMessages[chatMessages.length - 1];
 
     return CupertinoPageScaffold(
         resizeToAvoidBottomInset: true,
@@ -35,15 +33,15 @@ class ChatScreen extends StatelessWidget {
                 )),
           ),
           middle: Text(
-            lastChatMessage.otherName,
+            otherUserInfo.name,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           padding: EdgeInsetsDirectional.zero,
         ),
         child: Column(
           children: [
-            ChatContainer(chatMessages: chatMessages, chatBloc: chatBloc),
-            ChatInputContainer(lastMessage: lastChatMessage, chatBloc: chatBloc),
+            ChatContainer(chatMessages: chatMessages, otherUserInfo: otherUserInfo, chatBloc: chatBloc, isChatWithChatGPT: false),
+            ChatInputContainer(otherUserInfo: otherUserInfo, chatBloc: chatBloc, isChatWithChatGPT: false),
           ],
         ));
   }
