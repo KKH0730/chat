@@ -3,46 +3,62 @@ import 'dart:async';
 import 'package:chat/AppColors.dart';
 import 'package:chat/data/bloc/ChatBloc.dart';
 import 'package:chat/data/model/ChatMessage.dart';
+import 'package:chat/data/model/UserInfo.dart';
 import 'package:chat/ui/common/CommonComponent.dart';
 import 'package:chat/utils/DateUtil.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'ChatMessageComponent.dart';
 import 'ChatProfileImage.dart';
 
 class ChatContainer extends StatefulWidget {
   List<ChatMessage> chatMessages;
+  UserInfo otherUserInfo;
   ChatBloc chatBloc;
+  bool isChatWithChatGPT;
 
-  ChatContainer({super.key, required this.chatMessages, required this.chatBloc});
+  ChatContainer({super.key, required this.chatMessages, required this.otherUserInfo, required this.chatBloc, required this.isChatWithChatGPT});
 
   @override
-  State<StatefulWidget> createState() => _ChatContainerState(chatMessages: chatMessages, chatBloc: chatBloc);
+  State<StatefulWidget> createState() => _ChatContainerState(chatMessages: chatMessages, otherUserInfo: otherUserInfo, chatBloc: chatBloc, isChatWithChatGPT: isChatWithChatGPT);
 }
 
 class _ChatContainerState extends State<ChatContainer> {
+  List<ChatMessage> chatMessages;
+  UserInfo otherUserInfo;
+  ChatBloc chatBloc;
+
   final scrollController = ScrollController();
   double scrollOffset = 0;
   int firstVisibleItemIndex = 0;
-  List<ChatMessage> chatMessages;
-  ChatBloc chatBloc;
-  bool isRenderedChatMessages = false;
-  StreamController<double> scrollBarStreamController = StreamController();
-  GlobalKey listViewKey = GlobalKey();
 
-  _ChatContainerState({required this.chatMessages, required this.chatBloc});
+  bool isChatWithChatGPT;
+  bool isRenderedChatMessages = false;
+  GlobalKey listViewKey = GlobalKey();
+  StreamController<double> scrollBarStreamController = StreamController();
+  final Future<SharedPreferences> prefs = SharedPreferences.getInstance();
+
+  _ChatContainerState({ required this.chatMessages, required this.otherUserInfo, required this.chatBloc, required this.isChatWithChatGPT });
 
   @override
   void initState() {
     super.initState();
     scrollController.addListener(_scrollListener);
 
-    var lastChatMessage = chatMessages[0];
+    prefs.then((prefs) =>
+        chatBloc.observeAddedChatMessage(
+            prefs.getString('myUid')!,
+            otherUserInfo.uid,
+            prefs.getString('myProfileUri')!,
+            otherUserInfo.profileUri,
+            chatMessages.isNotEmpty ? chatMessages.first.timestamp : DateTime.now().millisecondsSinceEpoch,
+            isChatWithChatGPT
+        )
+    );
 
-    chatBloc.observeAddedChatMessage(
-        lastChatMessage.myUid, lastChatMessage.otherUid, lastChatMessage.myProfileUri, lastChatMessage.otherProfileUri, lastChatMessage.timestamp);
 
     chatBloc.addedChatMessagePublisher.listen((value) {
       // 새로운 메세지가 왔을 떄, ListView의 offest과 가장 하단의 offest의 차이가 메세지 2개정도 차이났을 때는 가장 하단으로 스크롤 해줌
@@ -168,9 +184,9 @@ class _ChatContainerState extends State<ChatContainer> {
                   itemBuilder: (context, index) {
                     return Column(
                       children: [
-                        if (index == chatMessages.length - 1) const SizedBox(height: 10),
-                        if (index == chatMessages.length - 1) _dateTextWidget(chatMessages[index].timestamp),
-                        if (index == chatMessages.length - 1) const SizedBox(height: 20),
+                        if (index == chatMessages.length - 1 && !chatMessages[index].isLoading) const SizedBox(height: 10),
+                        if (index == chatMessages.length - 1 && !chatMessages[index].isLoading) _dateTextWidget(chatMessages[index].timestamp),
+                        if (index == chatMessages.length - 1 && !chatMessages[index].isLoading) const SizedBox(height: 20),
                         if (index > 0 &&
                             index < chatMessages.length - 1 &&
                             !DateUtil.isSameDate(chatMessages[index + 1].timestamp, chatMessages[index].timestamp))
@@ -179,7 +195,12 @@ class _ChatContainerState extends State<ChatContainer> {
                             index < chatMessages.length - 1 &&
                             !DateUtil.isSameDate(chatMessages[index + 1].timestamp, chatMessages[index].timestamp))
                           const SizedBox(height: 20),
-                        ChatMessageComponent(chatMessage: chatMessages[index]),
+
+                        if (chatMessages[index].isLoading)
+                          _chatLoadingWidget(),
+                        if (!chatMessages[index].isLoading)
+                          ChatMessageComponent(chatMessage: chatMessages[index], isChatWithChatGPT: isChatWithChatGPT),
+
                         const SizedBox(height: 20),
                       ],
                     );
@@ -193,6 +214,19 @@ class _ChatContainerState extends State<ChatContainer> {
           return const LoadingScreen();
         }
       },
+    );
+  }
+
+  Widget _chatLoadingWidget() {
+    return Column(
+      children: const [
+        SizedBox(height: 10),
+        CupertinoActivityIndicator(
+          animating: true,
+          radius: 20.0,
+        ),
+        SizedBox(height: 10),
+      ],
     );
   }
 
@@ -283,7 +317,7 @@ class _ChatContainerState extends State<ChatContainer> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          ChatProfileImage(chatMessage: chatMessage, width: 24, height: 24),
+                          ChatProfileImage(chatMessage: chatMessage, width: 24, height: 24, isChatWithChatGPT: isChatWithChatGPT),
                           const SizedBox(width: 5),
                           Text(
                             chatMessage.otherName,

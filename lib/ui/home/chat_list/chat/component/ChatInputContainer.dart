@@ -1,29 +1,42 @@
 import 'package:chat/AppColors.dart';
 import 'package:chat/data/bloc/ChatBloc.dart';
 import 'package:chat/data/model/ChatMessage.dart';
+import 'package:chat/data/model/UserInfo.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 
 class ChatInputContainer extends StatefulWidget {
-  ChatMessage lastMessage;
+  UserInfo otherUserInfo;
   ChatBloc chatBloc;
+  bool isChatWithChatGPT;
 
-  ChatInputContainer({ super.key, required this.lastMessage, required this.chatBloc});
+  ChatInputContainer({ super.key, required this.otherUserInfo, required this.chatBloc, required this.isChatWithChatGPT });
 
   @override
   State<StatefulWidget> createState() =>
-      _ChatInputContainerState(lastMessage: lastMessage, chatBloc: chatBloc);
+      _ChatInputContainerState(otherUserInfo: otherUserInfo, chatBloc: chatBloc, isChatWithChatGPT: isChatWithChatGPT);
 }
 
 class _ChatInputContainerState extends State<ChatInputContainer>  {
   final Future<SharedPreferences> prefs = SharedPreferences.getInstance();
   ChatBloc chatBloc;
-  ChatMessage lastMessage;
+  UserInfo otherUserInfo;
+  bool isChatWithChatGPT;
+  bool isEnableSendButton = true;
   TextEditingController textEditingController = TextEditingController();
 
-  _ChatInputContainerState({required this.lastMessage, required this.chatBloc });
+  _ChatInputContainerState({required this.otherUserInfo, required this.chatBloc, required this.isChatWithChatGPT });
+
+  @override
+  void initState() {
+    super.initState();
+
+    chatBloc.sendButtonControlSubject.listen((isEnable) {
+      setState(() => isEnableSendButton = isEnable);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,20 +66,32 @@ class _ChatInputContainerState extends State<ChatInputContainer>  {
                     });
                   },
                   onSubmitted: (value) {
+                    if (!isEnableSendButton) {
+                      return;
+                    }
                     var message = textEditingController.text;
                     if (value.isEmpty) {
                       return;
                     }
                     textEditingController.clear();
 
-                    prefs.then((prefs) =>
-                        chatBloc.fetchChatMessage(
-                            message,
-                            prefs.getString('myName')!,
+                    prefs.then((prefs) {
+                      if (isChatWithChatGPT) {
+                        chatBloc.fetchMessageToChatGPT(
                             prefs.getString('myUid')!,
-                            lastMessage.otherName,
-                            lastMessage.otherUid
-                        ));
+                            prefs.getString('myName')!,
+                            message
+                        );
+                      } else {
+                        chatBloc.fetchChatMessage(
+                          message,
+                          prefs.getString('myName')!,
+                          prefs.getString('myUid')!,
+                          otherUserInfo.name,
+                          otherUserInfo.uid,
+                        );
+                      }
+                    });
                   }),
             ),
           ),
@@ -74,20 +99,32 @@ class _ChatInputContainerState extends State<ChatInputContainer>  {
             alignment: Alignment.centerRight,
             child: GestureDetector(
               onTap: () {
+                if (!isEnableSendButton) {
+                  return;
+                }
                 var message = textEditingController.text;
                 if (message.isEmpty) {
                   return;
                 }
                 textEditingController.clear();
 
-                prefs.then((prefs) =>
-                    chatBloc.fetchChatMessage(
-                        message,
-                        prefs.getString('myName')!,
+                prefs.then((prefs) {
+                  if (isChatWithChatGPT) {
+                    chatBloc.fetchMessageToChatGPT(
                         prefs.getString('myUid')!,
-                        lastMessage.otherName,
-                        lastMessage.otherUid
-                    ));
+                        prefs.getString('myName')!,
+                        message
+                    );
+                  } else {
+                    chatBloc.fetchChatMessage(
+                      message,
+                      prefs.getString('myName')!,
+                      prefs.getString('myUid')!,
+                      otherUserInfo.name,
+                      otherUserInfo.uid,
+                    );
+                  }
+                });
               },
               child: Visibility(
                 visible: textEditingController.text.isNotEmpty ? true : false,

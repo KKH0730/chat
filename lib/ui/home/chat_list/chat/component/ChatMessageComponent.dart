@@ -7,8 +7,9 @@ import 'ChatProfileImage.dart';
 
 class ChatMessageComponent extends StatelessWidget {
   late ChatMessage chatMessage;
+  bool isChatWithChatGPT;
 
-  ChatMessageComponent({super.key, required this.chatMessage});
+  ChatMessageComponent({ super.key, required this.chatMessage, required this.isChatWithChatGPT });
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +21,7 @@ class ChatMessageComponent extends StatelessWidget {
       children: [
         if (!chatMessage.isSender) const SizedBox(width: 10),
         if (!chatMessage.isSender)
-          ChatProfileImage(chatMessage: chatMessage, width: 36, height: 36),
+          ChatProfileImage(chatMessage: chatMessage, width: 36, height: 36, isChatWithChatGPT: isChatWithChatGPT),
         Flexible(
             child: Column(
           crossAxisAlignment: chatMessage.isSender

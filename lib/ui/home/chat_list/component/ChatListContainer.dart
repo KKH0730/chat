@@ -3,6 +3,7 @@ import 'package:chat/AppColors.dart';
 import 'package:chat/data/bloc/ChatListBloc.dart';
 import 'package:chat/data/model/ChatListItem.dart';
 import 'package:chat/data/model/ChatMessage.dart';
+import 'package:chat/data/model/UserInfo.dart';
 import 'package:chat/main.dart';
 import 'package:chat/ui/common/CommonComponent.dart';
 import 'package:chat/utils/DateUtil.dart';
@@ -10,14 +11,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class ChatListContainer extends StatefulWidget {
-  const ChatListContainer({super.key});
+  ChatListBloc chatListBloc;
+
+  ChatListContainer({super.key, required this.chatListBloc });
+
 
   @override
-  State<StatefulWidget> createState() => _ChatListState();
+  State<StatefulWidget> createState() => _ChatListState(chatListBloc: chatListBloc);
 }
 
 class _ChatListState extends State<ChatListContainer> with RouteAware {
-  ChatListBloc chatListBloc = ChatListBloc();
+  ChatListBloc chatListBloc;
+
+  _ChatListState({ required this.chatListBloc });
 
   @override
   void initState() {
@@ -30,7 +36,6 @@ class _ChatListState extends State<ChatListContainer> with RouteAware {
 
   @override
   void dispose() {
-    chatListBloc.dispose();
     routeObserver.unsubscribe(this);
     super.dispose();
   }
@@ -70,8 +75,15 @@ class _ChatListState extends State<ChatListContainer> with RouteAware {
                         ? Container()
                         : GestureDetector(
                         onTap: () {
-                          Navigator.pushNamed(context, '/ChatScreen', arguments: chatListItem.chatMessages);
-                          },
+                          Navigator.pushNamed(
+                              context,
+                              '/ChatScreen',
+                              arguments: {
+                                'otherUserInfo': UserInfo(uid: chatListItem.chatMessages.first.otherUid, name: chatListItem.chatMessages.first.otherName, profileUri: chatListItem.chatMessages.first.otherProfileUri),
+                                'chatMessages': chatListItem.chatMessages
+                              }
+                          );
+                        },
                         child: _chatListUnit(chatListItem)
                     );
                   });

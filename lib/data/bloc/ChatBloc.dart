@@ -1,10 +1,9 @@
 import 'dart:async';
 
-import 'package:chat/data/model/Result.dart';
+import 'package:chat/ui/home/chat_list/chat_gpt/ChatGPTScreen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
-import 'package:get/get.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/DateUtil.dart';
 import '../model/ChatMessage.dart';
 import '../repository/ChatRepository.dart';
@@ -12,36 +11,27 @@ import '../repository/ChatRepository.dart';
 class ChatBloc {
   final User? user = FirebaseAuth.instance.currentUser;
   final ChatRepository chatRepository = ChatRepository();
+  final Future<SharedPreferences> prefs = SharedPreferences.getInstance();
 
   BehaviorSubject<List<ChatMessage>> chatMessagesFetcher = BehaviorSubject();
   PublishSubject<ChatMessage> addedChatMessagePublisher = PublishSubject();
-  PublishSubject<bool> otherConnectionPublisher = PublishSubject();
+  PublishSubject<String> chatGPTMessagePublisher = PublishSubject();
+  BehaviorSubject<bool> sendButtonControlSubject = BehaviorSubject.seeded(true);
+  PublishSubject<bool> showLoadingPublisher = PublishSubject();
 
   final dateNotificationController = StreamController<String>();
   Stream<String> get dateNotificationStream => dateNotificationController.stream;
 
-  final messageController = StreamController<String>();
-  Stream<String> get messageStream => dateNotificationController.stream;
-
   final recentMessageNotificationController = StreamController<ChatMessage?>();
   Stream<ChatMessage?> get recentMessageNotificationStream => recentMessageNotificationController.stream;
-
-  final bottomPaddingController = StreamController<double>();
-  Stream<double> get bottomPaddingStream => bottomPaddingController.stream;
 
   List<StreamSubscription> chatListSubscriptionList = [];
 
   bool isPagingNetworkConnected = false;
   bool isCalledWholeChatMessages = false;
-  // 채팅 상대방이 앱을 종료했는지 안했는지 확인
-  bool isConnectedOtherDevice = false;
 
   ChatBloc({ required List<ChatMessage> chatMessages }) {
     chatMessagesFetcher.sink.add(chatMessages);
-
-    // if (chatMessages.isNotEmpty) {
-    //   observeOtherConnectionState(chatMessages[0].myUid, chatMessages[0].otherUid);
-    // }
 
     addedChatMessagePublisher.listen((value) {
       List<ChatMessage> chatMessages = chatMessagesFetcher.hasValue && chatMessagesFetcher.value.isNotEmpty ? chatMessagesFetcher.value : [];
@@ -49,27 +39,60 @@ class ChatBloc {
       chatMessagesFetcher.sink.add(chatMessages);
     });
 
-    otherConnectionPublisher.listen((value) {isConnectedOtherDevice = value;});
-  }
+    chatGPTMessagePublisher.listen((content) {
+      prefs.then((prefs) async {
+        showLoadingWidget(false);
+        await chatRepository.fetchChatMessageWithChatGPT(
+            content,
+            prefs.getString('myName') ?? '',
+            prefs.getString('myUid') ?? '',
+            ChatGPTScreen.CHAT_GPT_NAME,
+            ChatGPTScreen.CHAT_GPT_UID,
+            DateTime.now().millisecondsSinceEpoch,
+            false
+        );
+        enableChatSendButton(true);
+      });
+    });
 
-  // void observeOtherConnectionState(String myUid, String otherUid) {
-  //   chatListSubscriptionList.add(chatRepository.observeOtherConnectionState(otherConnectionPublisher, myUid, otherUid));
-  // }
+    showLoadingPublisher.listen((isShow) {
+      List<ChatMessage> chatMessages = chatMessagesFetcher.hasValue && chatMessagesFetcher.value.isNotEmpty ? chatMessagesFetcher.value : [];
+      if (isShow) {
+        ChatMessage loadingDummy = ChatMessage(
+            messageId: '',
+            timestamp: 0,
+            message: '',
+            myName: '',
+            otherName: '',
+            myUid: '',
+            otherUid: '',
+            isSender: true
+        );
+        loadingDummy.isLoading = true;
+        chatMessages.insert(0, loadingDummy);
+      } else {
+        if (chatMessages.isNotEmpty && chatMessages.first.isLoading) {
+          chatMessages.removeAt(0);
+        }
+      }
+      chatMessagesFetcher.sink.add(chatMessages);
+    });
+  }
 
   void observeAddedChatMessage(
       String myUid,
       String otherUid,
       String myProfileUri,
       String otherProfileUri,
-      int lastTimeStamp
+      int lastTimeStamp,
+      bool isChatWithChatGPT
   ) {
     if (user != null) {
-      chatListSubscriptionList.add(chatRepository.reqChatMessages(addedChatMessagePublisher, myUid, otherUid, myProfileUri, otherProfileUri, lastTimeStamp));
+      chatListSubscriptionList.add(chatRepository.reqChatMessages(addedChatMessagePublisher, myUid, otherUid, myProfileUri, otherProfileUri, lastTimeStamp, isChatWithChatGPT));
     }
   }
 
   void reqPreviousMessage(String myUid, String otherUid, String myProfileUri, String otherProfileUri, int lastTimestamp, String msg) async {
-    print('kkhdev 33 isPagingNetworkConnected : $isPagingNetworkConnected, isCalledWholeChatMessages : $isCalledWholeChatMessages');
     if (isPagingNetworkConnected || isCalledWholeChatMessages) {
       return;
     }
@@ -86,15 +109,20 @@ class ChatBloc {
     isPagingNetworkConnected = false;
   }
 
-  void fetchChatMessage(String message, String myName, String myUid, String otherName, String otherUid) async {
-    Result<bool> result = await chatRepository.fetchChatMessage(message, myName, myUid, otherName, otherUid, DateTime.now().millisecondsSinceEpoch);
-    if (result.success == null || result.success == false) {
-      messageController.sink.add('에러 발생!!!');
-    }
+  void fetchChatMessage(String message, String myName, String myUid, String otherName, String otherUid) {
+    chatRepository.fetchChatMessage(message, myName, myUid, otherName, otherUid, DateTime.now().millisecondsSinceEpoch);
   }
 
   void fetchUnCheckedMessageCountZero(String myUid, String otherUid) {
     chatRepository.fetchUnCheckedMessageCountZero(myUid, otherUid);
+  }
+
+  void fetchMessageToChatGPT(String myUid, String myName, String inputText) async {
+    enableChatSendButton(false);
+    await chatRepository.fetchChatMessageWithChatGPT(inputText, myName, myUid, ChatGPTScreen.CHAT_GPT_NAME, ChatGPTScreen.CHAT_GPT_UID, DateTime.now().millisecondsSinceEpoch, true);
+
+    showLoadingWidget(true);
+    chatRepository.fetchMessageToChatGPT(myUid, myName, inputText, chatGPTMessagePublisher);
   }
 
   List<ChatMessage> getChatMessages() {
@@ -110,10 +138,24 @@ class ChatBloc {
     }
   }
 
+  void enableChatSendButton(bool isEnable) {
+    sendButtonControlSubject.sink.add(isEnable);
+  }
+
+  void showLoadingWidget(bool isShow) {
+    showLoadingPublisher.sink.add(isShow);
+  }
+
   void dispose() {
+    chatMessagesFetcher.close();
     addedChatMessagePublisher.close();
+    chatGPTMessagePublisher.close();
+    sendButtonControlSubject.close();
+    showLoadingPublisher.close();
+
     dateNotificationController.close();
-    messageController.close();
+    recentMessageNotificationController.close();
+
     for (var element in chatListSubscriptionList) { element.cancel(); }
   }
 }
