@@ -113,5 +113,5 @@ class _ChatListScreen extends State<ChatListScreen> {
 }
 
 List<Widget> menuList = [
-  Image.asset('assets/images/img_ai_chat.png', width: 20, height: 20),
+  Image.asset('assets/images/ic_chatbot.png', width: 30, height: 30),
 ];

@@ -25,7 +25,7 @@ class ChatProfileImage extends StatelessWidget {
       height: height,
       child: CircleAvatar(
         backgroundColor: Colors.transparent,
-        backgroundImage: isChatWithChatGPT ? Image.asset('assets/images/img_android.png').image
+        backgroundImage: isChatWithChatGPT ? Image.asset('assets/images/ic_android.png').image
             : (chatMessage.otherProfileUri.isNotEmpty
             ? CachedNetworkImageProvider(
                 chatMessage.otherProfileUri,
