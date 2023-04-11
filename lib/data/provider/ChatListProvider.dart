@@ -14,25 +14,6 @@ class ChatListProvider {
       FirebaseDatabase.instance.refFromURL('https://chat-module-3187e-default-rtdb.firebaseio.com/');
   Client client = Get.find<Client>();
 
-
-  void fetchUnCheckedMessageCount(String myUid, String otherUid) {
-    var databaseRef = databaseReference
-        .child('chat_rooms')
-        .child(myUid)
-        .child('${myUid}_$otherUid');
-
-    databaseRef.runTransaction((Object? transaction) {
-      if (transaction == null) {
-        return Transaction.abort();
-      }
-
-      Map<String, dynamic> chatMessagesMap = Map<String, dynamic>.from(transaction as Map);
-      chatMessagesMap['unCheckedMessageCount'] = (chatMessagesMap['unCheckedMessageCount'] ?? 0) + 1;
-
-      return Transaction.success(chatMessagesMap);
-    });
-  }
-
   Future<StreamSubscription> observeAddedChatList(PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher, String myUid) async {
     DatabaseEvent event = await databaseReference
         .child('chat_rooms')
@@ -92,7 +73,7 @@ class ChatListProvider {
               addedChatListPublisher.sink.add(Tuple2<String, ChatListItem>(event.snapshot.key!, chatListItem));
             }
           } catch (e) {
-            print(' rror : $e');
+            print('error : $e');
             addedChatListPublisher.sink.add(Tuple2('', ChatListItem(unCheckedMessageCount:0, chatMessages:[])));
             print(e);
           }
@@ -109,21 +90,26 @@ class ChatListProvider {
         .onChildChanged
         .listen((event) async {
 
-      try {
+          try {
             List<ChatMessage> chatMessages = [];
             int unCheckedMessage = 0;
+            List<DataSnapshot> chatListSnapshotList = [];
+            for (DataSnapshot element in event.snapshot.children.toList().reversed) {
+              if (chatListSnapshotList.length >= 20) {
+                break;
+              }
 
-            List<DataSnapshot> dataSnapshotList = event.snapshot.children.toList();
-            if (dataSnapshotList.last.key == 'unCheckedMessageCount') {
-              unCheckedMessage = dataSnapshotList.last.value as int;
-              dataSnapshotList.removeAt(event.snapshot.children.length - 1);
+              if (element.key == 'unCheckedMessageCount') {
+                unCheckedMessage = element.value as int;
+                continue;
+              }
+
+              chatListSnapshotList.add(element);
             }
 
-            List<DataSnapshot> chatListSnapshotList = [];
-            if (dataSnapshotList.length <= 20) {
-              chatListSnapshotList = dataSnapshotList.toList();
-            } else {
-              chatListSnapshotList = dataSnapshotList.toList().sublist(dataSnapshotList.length - 20, dataSnapshotList.length);
+            if (chatListSnapshotList.isEmpty) {
+              changedChatListPublisher.sink.add(Tuple2('', ChatListItem(unCheckedMessageCount:0, chatMessages:[])));
+              return;
             }
 
             for (DataSnapshot chatListSnapshot in chatListSnapshotList) {
@@ -131,6 +117,7 @@ class ChatListProvider {
               ChatMessage chatMessage = ChatMessage.fromJson(chatListSnapshot.key!, Map.from(chatMap));
               chatMessages.add(chatMessage);
             }
+
             if (!changedChatListPublisher.isPaused && !changedChatListPublisher.isClosed) {
               ChatListItem chatListItem = ChatListItem(unCheckedMessageCount: unCheckedMessage, chatMessages: chatMessages);
               changedChatListPublisher.sink.add(Tuple2<String, ChatListItem>(event.snapshot.key!, chatListItem));
@@ -138,7 +125,7 @@ class ChatListProvider {
           } catch (e) {
             print(e);
           }
-    });
+        });
     return subscription;
   }
 
@@ -184,5 +171,31 @@ class ChatListProvider {
       print('error : $e');
       return [];
     }
+  }
+
+  void fetchUnCheckedMessageCount(String myUid, String otherUid) {
+    var databaseRef = databaseReference
+        .child('chat_rooms')
+        .child(myUid)
+        .child('${myUid}_$otherUid');
+
+    databaseRef.runTransaction((Object? transaction) {
+      if (transaction == null) {
+        return Transaction.abort();
+      }
+
+      Map<String, dynamic> chatMessagesMap = Map<String, dynamic>.from(transaction as Map);
+      chatMessagesMap['unCheckedMessageCount'] = (chatMessagesMap['unCheckedMessageCount'] ?? 0) + 1;
+
+      return Transaction.success(chatMessagesMap);
+    });
+  }
+
+  void fetchUnCheckedMessageCountZero(String myUid, String otherUid) {
+    databaseReference
+        .child('chat_rooms')
+        .child(myUid)
+        .child('${myUid}_$otherUid')
+        .update({'unCheckedMessageCount': 0 });
   }
 }

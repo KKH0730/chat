@@ -19,10 +19,12 @@ class ChatListBloc {
   PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher = PublishSubject();
   PublishSubject<Tuple2<String, ChatListItem>> changedChatListPublisher = PublishSubject();
   PublishSubject<List<ChatMessage>> chatMessagesWithChatGPTPublisher = PublishSubject();
-  List<StreamSubscription> chatListSubscriptionList = [];
+  PublishSubject<int> checkMessageCountPublisher = PublishSubject();
+
 
   // onChangedChild 호출 시 UserInfo(상대방의 Name과 ProfieUri)를 다시 호출하지 않기 위해 저장
   final Map<String, userInfo.UserInfo> otherUserInfoData = {};
+  List<StreamSubscription> chatListSubscriptionList = [];
 
   ChatListBloc() {
     addedChatListPublisher.listen((chatListTuple) {
@@ -48,17 +50,21 @@ class ChatListBloc {
             entries.add(MapEntry(chatListTuple.item1, chatListTuple.item2));
             break;
           } else {
-            if (chatListTuple.item2.chatMessages[chatListTuple.item2.chatMessages.length - 1].timestamp >=
-                entries[i].value.chatMessages[entries[i].value.chatMessages.length - 1].timestamp) {
+            if (chatListTuple.item2.chatMessages.first.timestamp >= entries[i].value.chatMessages.first.timestamp) {
               entries.insert(i, MapEntry(chatListTuple.item1, chatListTuple.item2));
               break;
             } else {
-              continue;
+              if (i == entries.length - 1) {
+                entries.add(MapEntry(chatListTuple.item1, chatListTuple.item2));
+              } else {
+                continue;
+              }
             }
           }
         }
       }
       chatListFetcher.sink.add(Map.fromEntries(entries));
+      fetchCheckMessageCount(chatListTuple.item1);
     });
 
     changedChatListPublisher.listen((chatListTuple) {
@@ -71,7 +77,7 @@ class ChatListBloc {
       }
 
       Map<String, ChatListItem> chatListMap = chatListFetcher.hasValue ? chatListFetcher.value : {};
-      chatListMap[chatListTuple.item1] = chatListTuple.item2;
+      // chatListMap[chatListTuple.item1] = chatListTuple.item2;
 
       var index = -1;
       List<MapEntry<String, ChatListItem>> entries = chatListMap.entries.toList();
@@ -83,12 +89,15 @@ class ChatListBloc {
       }
 
       if (index != -1) {
-        List<ChatMessage> tempChatMessages = entries[index].value.chatMessages.reversed.toList();
+        List<ChatMessage> tempChatMessages = entries[index].value.chatMessages.toList();
         entries.removeAt(index);
 
-        ChatListItem chatListItem = ChatListItem(unCheckedMessageCount: chatListTuple.item2.unCheckedMessageCount, chatMessages: tempChatMessages);
-        entries.insert(0, MapEntry(chatListTuple.item1, chatListItem));
+        // ChatListItem chatListItem = ChatListItem(unCheckedMessageCount: chatListTuple.item2.unCheckedMessageCount, chatMessages: tempChatMessages);
+        // entries.insert(0, MapEntry(chatListTuple.item1, chatListItem));
+        entries.insert(0, MapEntry(chatListTuple.item1, chatListTuple.item2));
+
         chatListFetcher.sink.add(Map.fromEntries(entries));
+        fetchCheckMessageCount(chatListTuple.item1);
       }
     });
   }
@@ -103,6 +112,23 @@ class ChatListBloc {
   void getChatMessagesWithChatGPT(String myUid, String otherUid, String otherName) async {
     List<ChatMessage> chatMessages = await chatListRepository.getChatMessagesWithChatGPT(myUid, otherUid, otherName);
     chatMessagesWithChatGPTPublisher.sink.add(chatMessages);
+  }
+
+  void fetchUnCheckedMessageCountZero(String key, String myUid, String otherUid) {
+    Map<String, ChatListItem> chatListMap = chatListFetcher.hasValue ? chatListFetcher.value : {};
+    chatListMap[key]?.unCheckedMessageCount = 0;
+
+    chatListRepository.fetchUnCheckedMessageCountZero(myUid, otherUid);
+  }
+
+  void fetchCheckMessageCount(String key) {
+    Map<String, ChatListItem> chatListMap = chatListFetcher.hasValue ? chatListFetcher.value : {};
+
+    int totalUnCheckedMessageCount = 0;
+    chatListMap.forEach((key, value) {
+      totalUnCheckedMessageCount += value.unCheckedMessageCount;
+    });
+    checkMessageCountPublisher.sink.add(totalUnCheckedMessageCount);
   }
 
   void pauseSubscription() {

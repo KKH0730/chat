@@ -10,8 +10,6 @@ import '../provider/ChatListProvider.dart';
 class ChatListRepository {
   final ChatListProvider chatListProvider = Get.find<ChatListProvider>();
 
-  void fetchUnCheckedMessageCount(String myUid, String otherUid) => chatListProvider.fetchUnCheckedMessageCount(myUid, otherUid);
-
   Future<StreamSubscription> observeAddedChatList(PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher, String myUid) =>
       chatListProvider.observeAddedChatList(addedChatListPublisher, myUid);
 
@@ -20,4 +18,8 @@ class ChatListRepository {
 
   Future<List<ChatMessage>> getChatMessagesWithChatGPT(String myUid, String otherUid, String otherName) =>
       chatListProvider.getChatMessagesWithChatGPT(myUid, otherUid, otherName);
+
+  void fetchUnCheckedMessageCount(String myUid, String otherUid) => chatListProvider.fetchUnCheckedMessageCount(myUid, otherUid);
+
+  void fetchUnCheckedMessageCountZero(String myUid, String otherUid) => chatListProvider.fetchUnCheckedMessageCountZero(myUid, otherUid);
 }

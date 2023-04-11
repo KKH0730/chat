@@ -1,3 +1,4 @@
+import 'package:chat/data/bloc/ChatListBloc.dart';
 import 'package:chat/data/bloc/HomeBloc.dart';
 import 'package:chat/ui/home/chat_list/ChatListScreen.dart';
 import 'package:chat/ui/home/friends/FriendsListScreen.dart';
@@ -7,27 +8,31 @@ import 'package:get/get.dart';
 
 class HomeScreen extends StatefulWidget {
   HomeBloc homeBloc = Get.find<HomeBloc>();
-
+  ChatListBloc chatListBloc = Get.find<ChatListBloc>();
   HomeScreen({super.key});
 
   @override
-  State<StatefulWidget> createState() => _HomeScreenState(homeBloc: homeBloc);
+  State<StatefulWidget> createState() => _HomeScreenState(homeBloc: homeBloc, chatListBloc: chatListBloc);
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   HomeBloc homeBloc;
+  ChatListBloc chatListBloc;
   int chatBadgeCount = 0;
 
-  _HomeScreenState({ required this.homeBloc });
+  _HomeScreenState({ required this.homeBloc, required this.chatListBloc });
 
   @override
   void initState() {
     super.initState();
+    chatListBloc.reqChatList();
+    chatListBloc.checkMessageCountPublisher.listen((unCheckMessageCount) => homeBloc.fetchChatBadgeCount(unCheckMessageCount));
   }
 
   @override
   void dispose() {
     homeBloc.chatBadgeCountPublisher.close();
+    chatListBloc.dispose();
     super.dispose();
   }
 
@@ -53,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
             case 0:
               return FriendsListScreen();
             case 1:
-              return ChatListScreen();
+              return ChatListScreen(chatListBloc: chatListBloc);
             case 2:
               return Container();
             case 3:

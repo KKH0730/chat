@@ -11,9 +11,9 @@ import 'component/ChatListContainer.dart';
 
 class ChatListScreen extends StatefulWidget {
   static bool isJoinChattingRoom = false;
-  ChatListBloc chatListBloc = ChatListBloc();
+  ChatListBloc chatListBloc;
 
-  ChatListScreen({super.key});
+  ChatListScreen({super.key, required this.chatListBloc });
 
   @override
   State<StatefulWidget> createState() => _ChatListScreen(chatListBloc: chatListBloc);
@@ -57,7 +57,7 @@ class _ChatListScreen extends State<ChatListScreen> {
 
   @override
   void dispose() {
-    chatListBloc.dispose();
+    // chatListBloc.dispose();
     super.dispose();
   }
 

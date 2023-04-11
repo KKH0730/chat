@@ -31,7 +31,7 @@ class _ChatListState extends State<ChatListContainer> with RouteAware {
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       routeObserver.subscribe(this, ModalRoute.of(context)!);
     });
-    chatListBloc.reqChatList();
+    // chatListBloc.reqChatList();
   }
 
   @override
@@ -81,6 +81,8 @@ class _ChatListState extends State<ChatListContainer> with RouteAware {
                         ? Container()
                         : GestureDetector(
                         onTap: () {
+                          chatListBloc.fetchUnCheckedMessageCountZero(key, chatListItem.chatMessages.first.myUid, chatListItem.chatMessages.first.otherUid);
+                          chatListBloc.fetchCheckMessageCount(key);
                           Navigator.pushNamed(
                               context,
                               '/ChatScreen',
@@ -101,7 +103,7 @@ class _ChatListState extends State<ChatListContainer> with RouteAware {
   }
 
   Widget _chatListUnit(ChatListItem chatListItem) {
-    ChatMessage chatMessage = chatListItem.chatMessages[0];
+    ChatMessage chatMessage = chatListItem.chatMessages.first;
     return Container(
         height: 75,
         color: Colors.transparent,

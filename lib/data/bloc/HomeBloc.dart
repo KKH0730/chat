@@ -1,7 +1,7 @@
 import 'package:rxdart/rxdart.dart';
 
 class HomeBloc {
-  PublishSubject<int> chatBadgeCountPublisher = PublishSubject();
+  BehaviorSubject<int> chatBadgeCountPublisher = BehaviorSubject();
 
   void fetchChatBadgeCount(int unCheckedMessageCount) {
     chatBadgeCountPublisher.sink.add(unCheckedMessageCount);
