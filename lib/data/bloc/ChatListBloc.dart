@@ -26,18 +26,20 @@ class ChatListBloc {
 
   ChatListBloc() {
     addedChatListPublisher.listen((chatListTuple) {
-      if (chatListTuple.item2.chatMessages.isEmpty) {
+      if (chatListTuple.item2.chatMessages.isEmpty || chatListTuple.item1.isEmpty) {
+        chatListFetcher.sink.add({});
         return;
       }
       otherUserInfoData[chatListTuple.item1] =
           userInfo.UserInfo(
-              uid:  chatListTuple.item2.chatMessages.last.otherUid,
-              name: chatListTuple.item2.chatMessages.last.otherName,
-              profileUri: chatListTuple.item2.chatMessages.last.otherProfileUri
+              uid:  chatListTuple.item2.chatMessages.first.otherUid,
+              name: chatListTuple.item2.chatMessages.first.otherName,
+              profileUri: chatListTuple.item2.chatMessages.first.otherProfileUri
           );
-      Map<String, ChatListItem> chatListMap = chatListFetcher.hasValue ? chatListFetcher.value : {};
 
+      Map<String, ChatListItem> chatListMap = chatListFetcher.hasValue ? chatListFetcher.value : {};
       List<MapEntry<String, ChatListItem>> entries = chatListMap.entries.toList();
+
       if (entries.isEmpty) {
         entries.add(MapEntry(chatListTuple.item1, chatListTuple.item2));
       } else {
@@ -51,16 +53,11 @@ class ChatListBloc {
               entries.insert(i, MapEntry(chatListTuple.item1, chatListTuple.item2));
               break;
             } else {
-              if (i == entries.length - 1) {
-                entries.add(MapEntry(chatListTuple.item1, chatListTuple.item2));
-              } else {
-                continue;
-              }
+              continue;
             }
           }
         }
       }
-
       chatListFetcher.sink.add(Map.fromEntries(entries));
     });
 
@@ -68,7 +65,6 @@ class ChatListBloc {
       if (chatListTuple.item2.chatMessages.isEmpty) {
         return;
       }
-
       for (var element in chatListTuple.item2.chatMessages) {
         element.otherName = otherUserInfoData[chatListTuple.item1]?.name ?? '';
         element.otherProfileUri = otherUserInfoData[chatListTuple.item1]?.profileUri ?? '';
@@ -97,9 +93,9 @@ class ChatListBloc {
     });
   }
 
-  void reqChatList() {
+  void reqChatList() async {
     if (user != null) {
-      chatListSubscriptionList.add(chatListRepository.observeAddedChatList(addedChatListPublisher, user!.uid));
+      chatListSubscriptionList.add(await chatListRepository.observeAddedChatList(addedChatListPublisher, user!.uid));
       chatListSubscriptionList.add(chatListRepository.observeChangedChild(changedChatListPublisher, user!.uid));
     }
   }

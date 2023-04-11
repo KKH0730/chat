@@ -1,4 +1,5 @@
 import 'package:chat/data/bloc/ChatListBloc.dart';
+import 'package:chat/data/bloc/HomeBloc.dart';
 import 'package:chat/data/model/ChatMessage.dart';
 import 'package:chat/data/model/UserInfo.dart';
 import 'package:chat/ui/home/chat_list/chat_gpt/ChatGPTScreen.dart';
@@ -66,7 +67,7 @@ class _ChatListScreen extends State<ChatListScreen> {
       child: Container(
         color: Colors.white,
         child: Column(
-          children: [_chatListHeader(context), ChatListContainer(chatListBloc: chatListBloc)],
+          children: [_chatListHeader(context), ChatListContainer(chatListBloc: chatListBloc )],
         ),
       ),
     );

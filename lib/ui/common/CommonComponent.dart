@@ -17,6 +17,15 @@ class ErrorScreen extends StatelessWidget {
   }
 }
 
+class NoDataScreen extends StatelessWidget {
+  const NoDataScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container();
+  }
+}
+
 class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key});
 
@@ -24,9 +33,9 @@ class LoadingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       alignment: Alignment.center,
-      child: const Text(
-        '로딩중!!!',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.color_FF000000),
+      child: const CupertinoActivityIndicator(
+        animating: true,
+        radius: 20.0,
       ),
     );
   }

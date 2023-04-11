@@ -12,7 +12,7 @@ class ChatListRepository {
 
   void fetchUnCheckedMessageCount(String myUid, String otherUid) => chatListProvider.fetchUnCheckedMessageCount(myUid, otherUid);
 
-  StreamSubscription observeAddedChatList(PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher, String myUid) =>
+  Future<StreamSubscription> observeAddedChatList(PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher, String myUid) =>
       chatListProvider.observeAddedChatList(addedChatListPublisher, myUid);
 
   StreamSubscription observeChangedChild(PublishSubject<Tuple2<String, ChatListItem>> changedChatListPublisher, String myUid) =>

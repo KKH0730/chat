@@ -155,9 +155,15 @@ class _ChatContainerState extends State<ChatContainer> {
   Widget _chatMessages(Stream<List<ChatMessage>> stream) {
     return StreamBuilder(
       stream: stream,
-      builder: (context, snapShot) {
-        if (snapShot.hasData) {
-          List<ChatMessage>? chatMessages = snapShot.data;
+      builder: (context, snapshot) {
+        if(snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingScreen();
+        } else if (snapshot.hasError) {
+          return const ErrorScreen();
+        } else if (!snapshot.hasData || snapshot.data?.isEmpty == true) {
+          return Container();
+        } else {
+          List<ChatMessage>? chatMessages = snapshot.data;
           if (chatMessages == null) {
             return const ErrorScreen();
           } else if (chatMessages.isEmpty) {
@@ -208,10 +214,6 @@ class _ChatContainerState extends State<ChatContainer> {
               ),
             );
           }
-        } else if (snapShot.hasError) {
-          return const ErrorScreen();
-        } else {
-          return const LoadingScreen();
         }
       },
     );

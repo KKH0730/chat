@@ -1,3 +1,4 @@
+import 'package:chat/data/bloc/HomeBloc.dart';
 import 'package:chat/ui/home/HomeScreen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,7 +10,6 @@ import 'firebase_options.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'di/DIBinding.dart';
-import 'ui/home/chat_list/ChatListScreen.dart';
 import 'ui/home/chat_list/chat/ChatScreen.dart';
 import 'ui/home/chat_list/chat_gpt/ChatGPTScreen.dart';
 
@@ -98,7 +98,6 @@ class MyApp extends StatelessWidget {
 const String initialRoute = '/';
 final Map<String, WidgetBuilder> routes = {
   '/': (BuildContext context) => HomeScreen(),
-  '/ChatListScreen': (BuildContext context) => ChatListScreen(),
   '/ChatScreen': (BuildContext context) => ChatScreen(),
   '/ChatGPTScreen': (BuildContext context) => ChatGPTScreen()
 };

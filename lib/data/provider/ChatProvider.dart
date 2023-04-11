@@ -5,7 +5,6 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:rxdart/rxdart.dart';
 
 import '../model/ChatMessage.dart';
-import '../model/Result.dart';
 
 class ChatProvider {
   final DatabaseReference databaseReference = FirebaseDatabase.instance.refFromURL('https://chat-module-3187e-default-rtdb.firebaseio.com/');
@@ -95,26 +94,21 @@ class ChatProvider {
           .child(timeMillisecond.toString())
           .update(map);
 
-      await databaseReference.child('chat_rooms')
+      databaseReference.child('chat_rooms')
           .child(otherUid)
           .child('${otherUid}_$myUid')
+          .child('unCheckedMessageCount')
+          .once()
+          .then((value) {
+            int currentCount = value.snapshot.value as int? ?? 0;
 
-          .runTransaction((Object? transaction) {
-            if (transaction == null) {
-              return Transaction.abort();
-            }
-            if(transaction is Map) {
-              Map<String, dynamic> chatMessagesMap = Map<String, dynamic>.from(transaction);
-              chatMessagesMap['unCheckedMessageCount'] = (chatMessagesMap['unCheckedMessageCount'] ?? 0) + 1;
-              print('kkhdev 222');
-              return Transaction.success(chatMessagesMap);
-            } else {
-              print('kkhdev 333');
-              return Transaction.success({'unCheckedMessageCount': 1});
-            }
-          });
+            databaseReference.child('chat_rooms')
+                .child(otherUid)
+                .child('${otherUid}_$myUid')
+                .update({'unCheckedMessageCount': currentCount + 1});
+        });
     } catch (e) {
-      print('kkhdev error : $e');
+      print('error : $e');
     }
   }
 
@@ -123,7 +117,7 @@ class ChatProvider {
         .child('chat_rooms')
         .child(myUid)
         .child('${myUid}_$otherUid')
-        .update({ 'unCheckedMessageCount': 0 });
+        .update({'unCheckedMessageCount': 0 });
   }
 
   void fetchMessageToChatGPT(String myUid, String myName, String inputText, PublishSubject<String> chatGPTMessagePublisher) async {

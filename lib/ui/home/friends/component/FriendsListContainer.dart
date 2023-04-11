@@ -44,17 +44,19 @@ class _FriendsListState extends State<FriendsListContainer> {
         child: StreamBuilder(
             stream: friendsBloc.friendsUidListFetcher.stream,
             builder: (context, snapshot) {
-              if (snapshot.hasData) {
+              if(snapshot.connectionState == ConnectionState.waiting) {
+                return const LoadingScreen();
+              } else if (snapshot.hasError) {
+                return const ErrorScreen();
+              } else if (!snapshot.hasData || snapshot.data?.isEmpty == true) {
+                return const NoDataScreen();
+              } else {
                 final userInfoList = snapshot.data!;
                 return ListView.builder(
                     itemCount: userInfoList.length,
                     itemBuilder: (context, index) {
                       return _friendListUnit(userInfoList[index]);
                     });
-              } else if (snapshot.hasError) {
-                return const ErrorScreen();
-              } else {
-                return const LoadingScreen();
               }
             }
         ),

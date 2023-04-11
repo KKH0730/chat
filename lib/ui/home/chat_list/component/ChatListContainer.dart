@@ -64,7 +64,13 @@ class _ChatListState extends State<ChatListContainer> with RouteAware {
         child: StreamBuilder(
           stream: chatListBloc.chatListFetcher.stream,
           builder: (context, snapshot) {
-            if (snapshot.hasData) {
+            if(snapshot.connectionState == ConnectionState.waiting) {
+              return const LoadingScreen();
+            } else if (snapshot.hasError) {
+              return const ErrorScreen();
+            } else if (!snapshot.hasData || snapshot.data?.isEmpty == true) {
+              return const NoDataScreen();
+            } else {
               final chatLisMap = snapshot.data!;
               return ListView.builder(
                   itemCount: chatLisMap.length,
@@ -87,10 +93,6 @@ class _ChatListState extends State<ChatListContainer> with RouteAware {
                         child: _chatListUnit(chatListItem)
                     );
                   });
-            } else if (snapshot.hasError) {
-              return const ErrorScreen();
-            } else {
-              return const LoadingScreen();
             }
           },
         ),

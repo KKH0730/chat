@@ -33,7 +33,18 @@ class ChatListProvider {
     });
   }
 
-  StreamSubscription observeAddedChatList(PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher, String myUid) {
+  Future<StreamSubscription> observeAddedChatList(PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher, String myUid) async {
+    DatabaseEvent event = await databaseReference
+        .child('chat_rooms')
+        .child(myUid)
+        .orderByChild('timestamp')
+        .endBefore(DateTime.now().millisecondsSinceEpoch)
+        .once();
+
+    if (event.snapshot.children.isEmpty) {
+      addedChatListPublisher.sink.add(Tuple2('', ChatListItem(unCheckedMessageCount:0, chatMessages:[])));
+    }
+
     StreamSubscription subscription = databaseReference
         .child('chat_rooms')
         .child(myUid)
@@ -44,7 +55,6 @@ class ChatListProvider {
           try {
             List<ChatMessage> chatMessages = [];
             int unCheckedMessage = 0;
-
             List<DataSnapshot> chatListSnapshotList = [];
             for (DataSnapshot element in event.snapshot.children.toList().reversed) {
               if (chatListSnapshotList.length >= 20) {
@@ -60,13 +70,13 @@ class ChatListProvider {
             }
 
             if (chatListSnapshotList.isEmpty) {
+              addedChatListPublisher.sink.add(Tuple2('', ChatListItem(unCheckedMessageCount:0, chatMessages:[])));
               return;
             }
 
             ChatMessage lastChatMessage = ChatMessage.fromJson(
                 chatListSnapshotList.first.key!, Map.from(chatListSnapshotList.first.value as Map<dynamic, dynamic>));
             var userInfo = await reqGetUserInfo(lastChatMessage.otherUid);
-
 
             for (DataSnapshot chatListSnapshot in chatListSnapshotList) {
               var chatMap = chatListSnapshot.value as Map<dynamic, dynamic>;
@@ -82,6 +92,8 @@ class ChatListProvider {
               addedChatListPublisher.sink.add(Tuple2<String, ChatListItem>(event.snapshot.key!, chatListItem));
             }
           } catch (e) {
+            print(' rror : $e');
+            addedChatListPublisher.sink.add(Tuple2('', ChatListItem(unCheckedMessageCount:0, chatMessages:[])));
             print(e);
           }
         });
