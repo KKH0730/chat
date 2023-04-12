@@ -35,7 +35,7 @@ class _ChatListScreen extends State<ChatListScreen> {
         ChatMessage chatMessage = ChatMessage(
             messageId: millisecond.toString(),
             timestamp: millisecond,
-            message: '안녕하세요? 저는 AI Assistance 입니다. 궁금한 점이 있다면 성심 성의껏 답변해 드리겠습니다!',
+            message: '안녕하세요? 저는 AI Assistance 입니다. 궁금한 점이 있다면 성심성의껏 답변해 드리겠습니다!',
             myName: prefs.getString('myName') ?? '',
             otherName: ChatGPTScreen.CHAT_GPT_NAME,
             myUid: prefs.getString('myUid') ?? '',

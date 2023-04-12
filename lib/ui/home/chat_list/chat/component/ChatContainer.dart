@@ -191,7 +191,7 @@ class _ChatContainerState extends State<ChatContainer> {
                     return Column(
                       children: [
                         if (index == chatMessages.length - 1 && !chatMessages[index].isLoading) const SizedBox(height: 10),
-                        if (index == chatMessages.length - 1 && !chatMessages[index].isLoading) _dateTextWidget(chatMessages[index].timestamp),
+                        if (index == chatMessages.length - 1 && !chatMessages[index].isLoading && !isChatWithChatGPT) _dateTextWidget(chatMessages[index].timestamp),
                         if (index == chatMessages.length - 1 && !chatMessages[index].isLoading) const SizedBox(height: 20),
                         if (index > 0 &&
                             index < chatMessages.length - 1 &&
