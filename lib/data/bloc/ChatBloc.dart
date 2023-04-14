@@ -9,7 +9,6 @@ import '../model/ChatMessage.dart';
 import '../repository/ChatRepository.dart';
 
 class ChatBloc {
-  final User? user = FirebaseAuth.instance.currentUser;
   final ChatRepository chatRepository = ChatRepository();
   final Future<SharedPreferences> prefs = SharedPreferences.getInstance();
 
@@ -87,9 +86,7 @@ class ChatBloc {
       int lastTimeStamp,
       bool isChatWithChatGPT
   ) {
-    if (user != null) {
-      chatListSubscriptionList.add(chatRepository.reqChatMessages(addedChatMessagePublisher, myUid, otherUid, myProfileUri, otherProfileUri, lastTimeStamp, isChatWithChatGPT));
-    }
+    chatListSubscriptionList.add(chatRepository.reqChatMessages(addedChatMessagePublisher, myUid, otherUid, myProfileUri, otherProfileUri, lastTimeStamp, isChatWithChatGPT));
   }
 
   void reqPreviousMessage(String myUid, String otherUid, String myProfileUri, String otherProfileUri, int lastTimestamp, String msg) async {

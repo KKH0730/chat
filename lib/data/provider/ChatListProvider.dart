@@ -15,29 +15,33 @@ class ChatListProvider {
   Client client = Get.find<Client>();
 
   Future<StreamSubscription> observeAddedChatList(PublishSubject<Tuple2<String, ChatListItem>> addedChatListPublisher, String myUid) async {
+    print('kkhdev myUid : $myUid, time : ${DateTime.now().millisecondsSinceEpoch}');
     DatabaseEvent event = await databaseReference
         .child('chat_rooms')
         .child(myUid)
-        .orderByChild('timestamp')
-        .endBefore(DateTime.now().millisecondsSinceEpoch)
+        // .orderByChild('timestamp')
+        // .endBefore(DateTime.now().millisecondsSinceEpoch)
         .once();
 
     if (event.snapshot.children.isEmpty) {
+      print('kkhdev firs sink add');
       addedChatListPublisher.sink.add(Tuple2('', ChatListItem(unCheckedMessageCount:0, chatMessages:[])));
     }
 
     StreamSubscription subscription = databaseReference
         .child('chat_rooms')
         .child(myUid)
-        .orderByChild('timestamp')
-        .endBefore(DateTime.now().millisecondsSinceEpoch)
+        // .orderByChild('timestamp')
+        // .endBefore(DateTime.now().millisecondsSinceEpoch
         .onChildAdded
         .listen((event) async {
+      print('kkhdev two listen  :${event.snapshot.key}');
           try {
             List<ChatMessage> chatMessages = [];
             int unCheckedMessage = 0;
             List<DataSnapshot> chatListSnapshotList = [];
             for (DataSnapshot element in event.snapshot.children.toList().reversed) {
+              print('kkhdev key : ${element.value}');
               if (chatListSnapshotList.length >= 20) {
                 break;
               }
@@ -68,7 +72,9 @@ class ChatListProvider {
               chatMessage.otherProfileUri = userInfo.profileUri;
               chatMessages.add(chatMessage);
             }
+            print('kkhdev 11111');
             if (!addedChatListPublisher.isPaused && !addedChatListPublisher.isClosed) {
+              print('kkhdev 22222');
               ChatListItem chatListItem = ChatListItem(unCheckedMessageCount: unCheckedMessage, chatMessages: chatMessages);
               addedChatListPublisher.sink.add(Tuple2<String, ChatListItem>(event.snapshot.key!, chatListItem));
             }
@@ -85,8 +91,8 @@ class ChatListProvider {
     StreamSubscription subscription = databaseReference
         .child('chat_rooms')
         .child(myUid)
-        .orderByChild('timestamp')
-        .endBefore(DateTime.now().millisecondsSinceEpoch)
+        // .orderByChild('timestamp')
+        // .endBefore(DateTime.now().millisecondsSinceEpoch)
         .onChildChanged
         .listen((event) async {
 

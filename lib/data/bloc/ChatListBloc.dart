@@ -6,12 +6,13 @@ import 'package:chat/data/model/userInfo.dart' as userInfo;
 
 import 'package:get/get.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tuple/tuple.dart';
 import '../model/ChatListItem.dart';
 import '../model/ChatMessage.dart';
 
 class ChatListBloc {
-  final User? user = FirebaseAuth.instance.currentUser;
+  final Future<SharedPreferences> prefs = SharedPreferences.getInstance();
   final chatListRepository = Get.find<ChatListRepository>();
 
   BehaviorSubject<Map<String, ChatListItem>> chatListFetcher = BehaviorSubject();
@@ -28,6 +29,7 @@ class ChatListBloc {
 
   ChatListBloc() {
     addedChatListPublisher.listen((chatListTuple) {
+      print('kkhdev listen');
       if (chatListTuple.item2.chatMessages.isEmpty || chatListTuple.item1.isEmpty) {
         chatListFetcher.sink.add({});
         return;
@@ -63,6 +65,7 @@ class ChatListBloc {
           }
         }
       }
+      print('kkhdev listen sink add');
       chatListFetcher.sink.add(Map.fromEntries(entries));
       fetchCheckMessageCount(chatListTuple.item1);
     });
@@ -103,10 +106,11 @@ class ChatListBloc {
   }
 
   void reqChatList() async {
-    if (user != null) {
-      chatListSubscriptionList.add(await chatListRepository.observeAddedChatList(addedChatListPublisher, user!.uid));
-      chatListSubscriptionList.add(chatListRepository.observeChangedChild(changedChatListPublisher, user!.uid));
-    }
+    prefs.then((prefs) async {
+      String uid = prefs.getString('myUid')!;
+      chatListSubscriptionList.add(await chatListRepository.observeAddedChatList(addedChatListPublisher, uid));
+      chatListSubscriptionList.add(chatListRepository.observeChangedChild(changedChatListPublisher, uid));
+    });
   }
 
   void getChatMessagesWithChatGPT(String myUid, String otherUid, String otherName) async {

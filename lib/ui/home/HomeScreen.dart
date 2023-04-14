@@ -5,6 +5,7 @@ import 'package:chat/ui/home/friends/FriendsListScreen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   HomeBloc homeBloc = Get.find<HomeBloc>();
